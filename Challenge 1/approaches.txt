@@ -1,0 +1,5 @@
+Supervised
+
+1) Naive Bayes
+2) SVM
+
