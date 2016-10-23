@@ -1,0 +1,9 @@
+30th October 2016: Parsed the data, cross validation implemented, atleast 4 approaches tried in total. 
+
+First Kaggle submission completed.
+
+Either using scipy or scikit-learn.
+
+4th Nov 2016: All approaches completed. Results finalized. Kaggle final submission done.
+
+6th Nov 2016: Reports + Slides done.
