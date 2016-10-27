@@ -13,6 +13,20 @@ X_Test = []
 '''
     Helper functions
 '''
+def deal_with_missing_values(data):
+    new_data = []
+    # Mask to set or not-set elements in array
+    mask = data != -1
+
+    # Compute the mean vaalues for masked elements along each column
+    avg = np.true_divide((data * mask).sum(0), mask.sum(0))
+
+    # Finally choose values based on mask and create output dataframe
+    new_data = np.where(~mask, avg, data)
+
+    return new_data
+
+
 def parse_file(filename):
     data = []
 
@@ -37,6 +51,9 @@ def import_data(test_file_name, train_file_name):
     xtrain = np.delete(xtrain, -1, 1)  # delete last column of xtrain
 
     xtest = parse_file(test_file_name)
+
+    xtrain = deal_with_missing_values(xtrain)
+    xtest = deal_with_missing_values(xtest)
 
     return xtrain, ytrain, xtest
 
@@ -68,7 +85,7 @@ def kernel_density():
     # KDE
     y_test = []
 
-    kde = KernelDensity(kernel='gaussian', bandwidth=1).fit(X_Train)
+    kde = KernelDensity(kernel='gaussian', bandwidth=0.5).fit(X_Train)
     score_samples_log = kde.score_samples(X_Test)
     score_samples = np.exp(score_samples_log)
 
@@ -77,8 +94,6 @@ def kernel_density():
 
     for i in range(0, len(X_Test)):
         if score_samples[i] == 0.0:
-            y_test.append(1)
-        elif score_samples[i] != 0.0:
             y_test.append(1)
         else:
             y_test.append(0)
@@ -91,14 +106,12 @@ def kernel_density():
 def one_class_svm():
     y_test = []
 
-    clf = svm.OneClassSVM(nu=0.9)
+    clf = svm.OneClassSVM(nu=0.01)
     clf.fit(X_Train)
     prediction = clf.predict(X_Test)
 
     for i in range(0, len(X_Test)):
         if prediction[i] == -1.0:
-            y_test.append(1)
-        elif prediction[i] == 1:
             y_test.append(1)
         else:
             y_test.append(0)
@@ -146,8 +159,6 @@ def local_outlier_factor():
     for i in range(0, len(X_Test)):
         if lofs[i] > threshold:
             y_test.append(1)
-        elif lofs[i] <= threshold:
-            y_test.append(1)
         else:
             y_test.append(0)
 
@@ -174,7 +185,7 @@ def main():
     for name, classifier in classifiers.items():
         # Every classifier returns an accuracy. We sum and average these for each one
         y_test = classifier()
-        print y_test
+        print "{}: {}".format(name, y_test)
 
 if __name__ == "__main__":
     main()
