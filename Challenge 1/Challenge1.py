@@ -1,37 +1,59 @@
 from __future__ import division
 
-import matplotlib.pyplot as plt
 from sklearn import svm
-from scipy import io
 from sklearn.neighbors import KernelDensity
 import numpy as np
-from sklearn.model_selection import KFold
-from scipy.spatial import distance
 from sklearn.neighbors import NearestNeighbors
+import csv
 
 X_Train = []
 y_train = []
 X_Test = []
-y_test = []
+
 '''
     Helper functions
 '''
-def import_data(file):
-    # Loading raw data from the matlab object
-    data = (io.loadmat(file))
+def parse_file(filename):
+    data = []
 
-    # Converting to an array
-    dataset = data['x']['data'].tolist()[0][0]
-    dataset = np.array(dataset)
+    with open(filename, 'rb') as f:
+        reader = csv.reader(f)
+        for row in reader:
+            dataline = [w.replace('NaN', '-1') for w in row]  # Convert NaN to -1
+            dataline = map(int, dataline)
+            data.append(dataline)
 
-    # Getting labels, as a list of lists
-    labels = data['x']['nlab'].tolist()[0][0]
+    return np.array(data)
 
-    # Flattening them out into one list
-    labels = [item for sublist in labels for item in sublist]
-    labels = np.array(labels) # 183 are 1 (outliers) and 238 are 2 (inliers)
 
-    return dataset, labels
+def import_data(test_file_name, train_file_name):
+    xtrain = []
+    ytrain = []
+    xtest = []
+
+    xtrain = parse_file(train_file_name)
+    last_col_index = xtrain.shape[1]-1
+    ytrain = xtrain[:, last_col_index]  # Last column in labels
+    xtrain = np.delete(xtrain, -1, 1)  # delete last column of xtrain
+
+    xtest = parse_file(test_file_name)
+
+    return xtrain, ytrain, xtest
+
+# data = (io.loadmat(file))
+    #
+    # # Converting to an array
+    # dataset = data['x']['data'].tolist()[0][0]
+    # dataset = np.array(dataset)
+    #
+    # # Getting labels, as a list of lists
+    # labels = data['x']['nlab'].tolist()[0][0]
+    #
+    # # Flattening them out into one list
+    # labels = [item for sublist in labels for item in sublist]
+    # labels = np.array(labels) # 183 are 1 (outliers) and 238 are 2 (inliers)
+    #
+    # return dataset, labels
 
 
 def remove_anomalies(dataset, labels):
@@ -44,42 +66,44 @@ def remove_anomalies(dataset, labels):
 '''
 def kernel_density():
     # KDE
+    y_test = []
+
     kde = KernelDensity(kernel='gaussian', bandwidth=1).fit(X_Train)
     score_samples_log = kde.score_samples(X_Test)
     score_samples = np.exp(score_samples_log)
 
     # plt.plot(score_samples)
     # plt.show()
-    accuracy = 0
 
-    for i in range(0, len(score_samples)):
-        if score_samples[i] == 0.0 and y_test[i] == 1:
-            accuracy += 1
-        if score_samples[i] != 0.0 and y_test[i] == 0:
-            accuracy += 1
+    for i in range(0, len(X_Test)):
+        if score_samples[i] == 0.0:
+            y_test.append(1)
+        elif score_samples[i] != 0.0:
+            y_test.append(1)
+        else:
+            y_test.append(0)
 
-    return accuracy/len(score_samples)
-
+    return y_test
 
 '''
     One Class SVM using sci-kit learn
 '''
 def one_class_svm():
-    total = len(y_train)
-    correct = 0
+    y_test = []
 
     clf = svm.OneClassSVM(nu=0.9)
     clf.fit(X_Train)
     prediction = clf.predict(X_Test)
 
-    for i in range(0, total):
-        if prediction[i] == -1.0 and y_test[i] == 1:
-            correct += 1
-        if prediction[i] == 1 and y_test[i] == 0:
-            correct += 1
+    for i in range(0, len(X_Test)):
+        if prediction[i] == -1.0:
+            y_test.append(1)
+        elif prediction[i] == 1:
+            y_test.append(1)
+        else:
+            y_test.append(0)
 
-    return correct/total
-
+    return y_test
 
 '''
     Implementation of Local Outlier Factor
@@ -100,6 +124,7 @@ def local_reachability_distance(nn_indices, distance_data, k):
 
 def local_outlier_factor():
     # find k-nearest neighbours of a point
+    y_test = []
     lofs = []
     k = 3
     nbrs = NearestNeighbors(n_neighbors=k+1, metric='euclidean').fit(X_Train)
@@ -117,15 +142,14 @@ def local_outlier_factor():
         lrd_point = local_reachability_distance(nn_indices[point_index], nn_distances, k)
         lofs.append(normalized_lrd_n / lrd_point)
 
-    accuracy = 0
     threshold = 1.2
-    for i in range(0, len(lofs)):
-        if lofs[i] > threshold and y_test[i] == 1:
-            accuracy += 1
-        if lofs[i] <= threshold and y_test[i] == 0:
-            accuracy += 1
-
-    return accuracy/len(lofs)
+    for i in range(0, len(X_Test)):
+        if lofs[i] > threshold:
+            y_test.append(1)
+        elif lofs[i] <= threshold:
+            y_test.append(1)
+        else:
+            y_test.append(0)
 
 
 '''
@@ -135,12 +159,9 @@ def main():
     global X_Train
     global y_train
     global X_Test
-    global y_test
-
-    accuracy = 0
 
     # Load data from dat file
-    X_Train, y_train, X_Test, y_test = import_data('oc_514.mat')
+    X_Train, y_train, X_Test = import_data('sat-test-data.csv.dat', 'sat-train.csv.dat')
 
     # Make a kfold object that will split data into k training and test sets
 
@@ -152,9 +173,8 @@ def main():
 
     for name, classifier in classifiers.items():
         # Every classifier returns an accuracy. We sum and average these for each one
-        accuracy = classifier()
-        print "Accuracy of {} is {} %".format(name, round((accuracy)*100, 5))
-
+        y_test = classifier()
+        print y_test
 
 if __name__ == "__main__":
     main()
