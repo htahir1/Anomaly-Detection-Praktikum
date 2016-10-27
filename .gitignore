@@ -87,3 +87,10 @@ ENV/
 
 # Rope project settings
 .ropeproject
+.idea/Anomaly-Detection-Praktikum.iml
+.idea/dbnavigator.xml
+.idea/encodings.xml
+.idea/inspectionProfiles/
+.idea/misc.xml
+.idea/modules.xml
+.idea/workspace.xml
