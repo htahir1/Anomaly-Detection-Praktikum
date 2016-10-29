@@ -5,6 +5,7 @@ from sklearn.neighbors import KernelDensity
 import numpy as np
 from sklearn.neighbors import NearestNeighbors
 from sklearn.model_selection import KFold
+from sklearn.neural_network import MLPClassifier
 import csv
 
 X_Train = []
@@ -15,6 +16,45 @@ y_test = []
 '''
     Helper functions
 '''
+def neighbourhood_average(data):
+    '''
+        [
+            [92	115	120	94	84	102	106	79]
+            [84	102	106	79	84	102	102	83]
+        ]
+    '''
+
+    for i in range(0, np.shape(data)[0]):
+        for j in range(0, 4):
+            a = j
+            sum = 0
+            count = 0
+
+            # Getting average of neighbourhood
+            for k in range(0, 9):
+                if a < np.shape(data)[1]:
+                    if data[i][a] != -1:  # This means its NOT a nan value
+                        sum += data[i][a]
+                        count += 1
+                    a += 4
+
+            # Replacing NaNs with average of neighbourhood
+            a = j
+            for k in range(0, 9):
+                if a < np.shape(data)[1]:
+                    if data[i][a] == -1:  # This means its a nan value
+                        if count != 0:
+                            data[i][a] = sum / count
+                a += 4
+
+
+    f = file("preprocessed_training_data.bin", "wb")
+    np.save(f, data)
+    f.close()
+
+    return data
+
+
 def missing_val_avg(data):
     new_data = []
     # Mask to set or not-set elements in array
@@ -180,7 +220,7 @@ def local_outlier_factor(use_training):
 def support_vector(use_training):
 
     classifier = svm.SVC(C=1.0, cache_size=200, class_weight=None, coef0=0.0,
-                         decision_function_shape=None, degree=3, gamma='auto', kernel='linear',
+                         decision_function_shape='ovo', degree=3, gamma='auto', kernel='poly',
                          max_iter=-1, probability=False, random_state=None, shrinking=True,
                          tol=0.001, verbose=False)
 
@@ -197,6 +237,29 @@ def support_vector(use_training):
 
         return accuracy/len(predictions)
 
+
+def multi_layer_perceptron(use_training):
+    clf = MLPClassifier(activation='relu', alpha=1e-7, batch_size='auto',
+                        beta_1=0.9, beta_2=0.999, early_stopping=False,
+                        epsilon=1e-08, hidden_layer_sizes=(5, 2), learning_rate='adaptive',
+                        learning_rate_init=0.001, max_iter=10000, momentum=0.9,
+                        nesterovs_momentum=True, power_t=0.5, random_state=1000, shuffle=True,
+                        solver='lbfgs', tol=0.0001, validation_fraction=0.1, verbose=False,
+                        warm_start=False)
+
+    clf.fit(X_Train, y_train)
+
+    predictions = clf.predict(X_Test)
+
+    if not use_training:
+        return predictions
+    else:
+        accuracy = 0
+        for i in range(0, len(predictions)):
+            if predictions[i] == y_test[i]:
+                accuracy += 1
+
+        return accuracy/len(predictions)
 
 '''
     Main function. Start reading the code here
@@ -216,12 +279,13 @@ def main():
         # "Kernel Density Estimation": kernel_density,
         # "One Class SVM": one_class_svm}
         # "Local Outlier Factor": local_outlier_factor,
-        "Support Vector Classifier": support_vector
+        "Support Vector Classifier": support_vector,
+        "Multi Layer Perceptron": multi_layer_perceptron
     }
 
     # Load data from dat file
     X_Total, y_total, X_Test = import_data('sat-test-data.csv.dat', 'sat-train.csv.dat')
-    X_Train = missing_val_avg(X_Total)
+    X_Train = neighbourhood_average(X_Total)
 
     # Use this loop for testing on training data
     for name, classifier in classifiers.items():
@@ -239,8 +303,8 @@ def main():
 
     # Load the data
     X_Train, y_train, X_Test = import_data('sat-test-data.csv.dat', 'sat-train.csv.dat')
-    X_Train = missing_val_avg(X_Train)
-    X_Test = missing_val_avg(X_Test)
+    X_Train = neighbourhood_average(X_Train)
+    X_Test = neighbourhood_average(X_Test)
 
     # Use this loop for testing on test data
     for name, classifier in classifiers.items():
