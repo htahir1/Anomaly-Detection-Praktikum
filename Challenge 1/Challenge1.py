@@ -40,6 +40,7 @@ def missing_val_max(data):
 
     return new_data
 
+
 def parse_file(filename):
     data = []
 
@@ -158,15 +159,15 @@ def local_outlier_factor():
             y_test.append(0)
 
 
-def support_vector(X,y,Test,y_test):
+def support_vector():
     classifier = svm.SVC(C=1.0, cache_size=200, class_weight=None, coef0=0.0,
                          decision_function_shape=None, degree=3, gamma='auto', kernel='linear',
                          max_iter=-1, probability=False, random_state=None, shrinking=True,
                          tol=0.001, verbose=False)
-    model = classifier.fit(X, y)
-    predictions = classifier.predict(Test)
+    classifier.fit(X_Train, y_train)
+    predictions = classifier.predict(X_Test)
     return predictions
-    #return (classifier.predict(Test) == y_test).sum()/len(Test),
+
 
 def write_to_file(filename,data):
     f = open(filename, 'w')
@@ -191,22 +192,19 @@ def main():
     X_Train, y_train, X_Test = import_data('sat-test-data.csv.dat', 'sat-train.csv.dat')
     X_Train = missing_val_avg(X_Train)
     X_Test = missing_val_avg(X_Test)
-    print(write_to_file('output.csv.dat',support_vector(X_Train,y_train,X_Test,'')))
-
-
-
-    # Make a kfold object that will split data into k training and test sets
 
     # Define "classifiers" to be used
     classifiers = {
-        "Kernel Density Estimation": kernel_density,
-        "One Class SVM": one_class_svm}
-        # "Local Outlier Factor": local_outlier_factor}
+        # "Kernel Density Estimation": kernel_density,
+        # "One Class SVM": one_class_svm}
+        # "Local Outlier Factor": local_outlier_factor,
+        "Support Vector Classifier": support_vector
+    }
 
-  #  for name, classifier in classifiers.items():
-    #    # Every classifier returns an accuracy. We sum and average these for each one
-     #   y_test = classifier()
-      #  print "{}: {}".format(name, y_test)
+    for name, classifier in classifiers.items():
+       y_test = classifier()
+       write_to_file(name + '_output.csv.dat', y_test)
+
 
 if __name__ == "__main__":
     main()
