@@ -55,6 +55,43 @@ def neighbourhood_average(data):
     return data
 
 
+def neighbourhood_max(data):
+    '''
+        [
+            [92	115	120	94	84	102	106	79]
+            [84	102	106	79	84	102	102	83]
+        ]
+    '''
+
+    for i in range(0, np.shape(data)[0]):
+        for j in range(0, 4):
+            a = j
+            max = -1
+
+            # Getting average of neighbourhood
+            for k in range(0, 9):
+                if a < np.shape(data)[1]:
+                    if data[i][a] != -1:  # This means its NOT a nan value
+                        if max < data[i][a]:
+                            max = data[i][a]
+                    a += 4
+
+            # Replacing NaNs with average of neighbourhood
+            a = j
+            for k in range(0, 9):
+                if a < np.shape(data)[1]:
+                    if data[i][a] == -1:  # This means its a nan value
+                        data[i][a] = max
+                a += 4
+
+
+    f = file("preprocessed_training_data.bin", "wb")
+    np.save(f, data)
+    f.close()
+
+    return data
+
+
 def missing_val_avg(data):
     new_data = []
     # Mask to set or not-set elements in array
@@ -285,7 +322,7 @@ def main():
 
     # Load data from dat file
     X_Total, y_total, X_Test = import_data('sat-test-data.csv.dat', 'sat-train.csv.dat')
-    X_Train = neighbourhood_average(X_Total)
+    X_Train = neighbourhood_max(X_Total)
 
     # Use this loop for testing on training data
     for name, classifier in classifiers.items():
@@ -303,8 +340,8 @@ def main():
 
     # Load the data
     X_Train, y_train, X_Test = import_data('sat-test-data.csv.dat', 'sat-train.csv.dat')
-    X_Train = neighbourhood_average(X_Train)
-    X_Test = neighbourhood_average(X_Test)
+    X_Train = neighbourhood_max(X_Train)
+    X_Test = neighbourhood_max(X_Test)
 
     # Use this loop for testing on test data
     for name, classifier in classifiers.items():
