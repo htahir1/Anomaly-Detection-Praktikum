@@ -4,11 +4,13 @@ from sklearn import svm
 from sklearn.neighbors import KernelDensity
 import numpy as np
 from sklearn.neighbors import NearestNeighbors
+from sklearn.model_selection import KFold
 import csv
 
 X_Train = []
 y_train = []
 X_Test = []
+y_test = []
 
 '''
     Helper functions
@@ -39,6 +41,19 @@ def missing_val_max(data):
     new_data = np.where(~mask, max, data)
 
     return new_data
+
+
+def write_to_file(filename,data):
+    f = open(filename, 'w')
+    f.write('Id,Expected\n')
+    i = 1
+    for item in data:
+        f.write('%s' % i)
+        f.write(',')
+        f.write('%s' % item)
+        f.write('\n')
+        i = i+1
+    f.close()
 
 
 def parse_file(filename):
@@ -77,7 +92,7 @@ def remove_anomalies(dataset, labels):
 '''
     Kernel Density Estimation using sci-kit learn
 '''
-def kernel_density():
+def kernel_density(use_training):
     # KDE
     y_test = []
 
@@ -99,7 +114,7 @@ def kernel_density():
 '''
     One Class SVM using sci-kit learn
 '''
-def one_class_svm():
+def one_class_svm(use_training):
     y_test = []
 
     clf = svm.OneClassSVM(nu=0.01)
@@ -131,7 +146,7 @@ def local_reachability_distance(nn_indices, distance_data, k):
     return 1 / (rd / k)
 
 
-def local_outlier_factor():
+def local_outlier_factor(use_training):
     # find k-nearest neighbours of a point
     y_test = []
     lofs = []
@@ -159,27 +174,30 @@ def local_outlier_factor():
             y_test.append(0)
 
 
-def support_vector():
+'''
+    SVC
+'''
+def support_vector(use_training):
+
     classifier = svm.SVC(C=1.0, cache_size=200, class_weight=None, coef0=0.0,
                          decision_function_shape=None, degree=3, gamma='auto', kernel='linear',
                          max_iter=-1, probability=False, random_state=None, shrinking=True,
                          tol=0.001, verbose=False)
+
     classifier.fit(X_Train, y_train)
     predictions = classifier.predict(X_Test)
-    return predictions
+
+    if not use_training:
+        return predictions
+    else:
+        accuracy = 0
+        for i in range(0, len(predictions)):
+            if predictions[i] == y_test[i]:
+                accuracy += 1
+
+        return accuracy/len(predictions)
 
 
-def write_to_file(filename,data):
-    f = open(filename, 'w')
-    f.write('Id,Expected\n')
-    i = 1
-    for item in data:
-        f.write('%s' % i)
-        f.write(',')
-        f.write('%s' % item)
-        f.write('\n')
-        i = i+1
-    f.close()
 '''
     Main function. Start reading the code here
 '''
@@ -187,11 +205,11 @@ def main():
     global X_Train
     global y_train
     global X_Test
+    global y_test
 
-    # Load data from dat file
-    X_Train, y_train, X_Test = import_data('sat-test-data.csv.dat', 'sat-train.csv.dat')
-    X_Train = missing_val_avg(X_Train)
-    X_Test = missing_val_avg(X_Test)
+    # Make a kfold object that will split data into k training and test sets
+    num_splits = 3
+    kfold = KFold(n_splits=num_splits)
 
     # Define "classifiers" to be used
     classifiers = {
@@ -201,9 +219,33 @@ def main():
         "Support Vector Classifier": support_vector
     }
 
+    # Load data from dat file
+    X_Total, y_total, X_Test = import_data('sat-test-data.csv.dat', 'sat-train.csv.dat')
+    X_Train = missing_val_avg(X_Total)
+
+    # Use this loop for testing on training data
     for name, classifier in classifiers.items():
-       y_test = classifier()
-       write_to_file(name + '_output.csv.dat', y_test)
+        accuracy = 0
+        for train_index, test_index in kfold.split(X_Total):
+            # Use indices to seperate out training and test data
+            X_Train, X_Test = X_Total[train_index], X_Total[test_index]
+            y_train, y_test = y_total[train_index], y_total[test_index]
+
+            accuracy += classifier(use_training=True)
+
+        total = accuracy / num_splits
+        print "Accuracy of {} is {} %".format(name, round((total)*100, 5))
+
+
+    # Load the data
+    X_Train, y_train, X_Test = import_data('sat-test-data.csv.dat', 'sat-train.csv.dat')
+    X_Train = missing_val_avg(X_Train)
+    X_Test = missing_val_avg(X_Test)
+
+    # Use this loop for testing on test data
+    for name, classifier in classifiers.items():
+        y_test = classifier(use_training=False)
+        write_to_file(name + '_output.csv.dat', y_test)
 
 
 if __name__ == "__main__":
