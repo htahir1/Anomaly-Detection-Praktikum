@@ -13,7 +13,7 @@ X_Test = []
 '''
     Helper functions
 '''
-def deal_with_missing_values(data):
+def missing_val_avg(data):
     new_data = []
     # Mask to set or not-set elements in array
     mask = data != -1
@@ -26,6 +26,19 @@ def deal_with_missing_values(data):
 
     return new_data
 
+
+def missing_val_max(data):
+    new_data = []
+    # Mask to set or not-set elements in array
+    mask = data != -1
+
+    # Compute the mean vaalues for masked elements along each column
+    max = data.max(0)
+
+    # Finally choose values based on mask and create output dataframe
+    new_data = np.where(~mask, max, data)
+
+    return new_data
 
 def parse_file(filename):
     data = []
@@ -52,25 +65,7 @@ def import_data(test_file_name, train_file_name):
 
     xtest = parse_file(test_file_name)
 
-    xtrain = deal_with_missing_values(xtrain)
-    xtest = deal_with_missing_values(xtest)
-
     return xtrain, ytrain, xtest
-
-# data = (io.loadmat(file))
-    #
-    # # Converting to an array
-    # dataset = data['x']['data'].tolist()[0][0]
-    # dataset = np.array(dataset)
-    #
-    # # Getting labels, as a list of lists
-    # labels = data['x']['nlab'].tolist()[0][0]
-    #
-    # # Flattening them out into one list
-    # labels = [item for sublist in labels for item in sublist]
-    # labels = np.array(labels) # 183 are 1 (outliers) and 238 are 2 (inliers)
-    #
-    # return dataset, labels
 
 
 def remove_anomalies(dataset, labels):
@@ -163,6 +158,27 @@ def local_outlier_factor():
             y_test.append(0)
 
 
+def support_vector(X,y,Test,y_test):
+    classifier = svm.SVC(C=1.0, cache_size=200, class_weight=None, coef0=0.0,
+                         decision_function_shape=None, degree=3, gamma='auto', kernel='linear',
+                         max_iter=-1, probability=False, random_state=None, shrinking=True,
+                         tol=0.001, verbose=False)
+    model = classifier.fit(X, y)
+    predictions = classifier.predict(Test)
+    return predictions
+    #return (classifier.predict(Test) == y_test).sum()/len(Test),
+
+def write_to_file(filename,data):
+    f = open(filename, 'w')
+    f.write('Id,Expected\n')
+    i = 1
+    for item in data:
+        f.write('%s' % i)
+        f.write(',')
+        f.write('%s' % item)
+        f.write('\n')
+        i = i+1
+    f.close()
 '''
     Main function. Start reading the code here
 '''
@@ -173,6 +189,11 @@ def main():
 
     # Load data from dat file
     X_Train, y_train, X_Test = import_data('sat-test-data.csv.dat', 'sat-train.csv.dat')
+    X_Train = missing_val_avg(X_Train)
+    X_Test = missing_val_avg(X_Test)
+    print(write_to_file('output.csv.dat',support_vector(X_Train,y_train,X_Test,'')))
+
+
 
     # Make a kfold object that will split data into k training and test sets
 
@@ -182,10 +203,10 @@ def main():
         "One Class SVM": one_class_svm}
         # "Local Outlier Factor": local_outlier_factor}
 
-    for name, classifier in classifiers.items():
-        # Every classifier returns an accuracy. We sum and average these for each one
-        y_test = classifier()
-        print "{}: {}".format(name, y_test)
+  #  for name, classifier in classifiers.items():
+    #    # Every classifier returns an accuracy. We sum and average these for each one
+     #   y_test = classifier()
+      #  print "{}: {}".format(name, y_test)
 
 if __name__ == "__main__":
     main()
