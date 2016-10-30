@@ -6,6 +6,10 @@ import numpy as np
 from sklearn.neighbors import NearestNeighbors
 from sklearn.model_selection import KFold
 from sklearn.neural_network import MLPClassifier
+from sklearn.naive_bayes import MultinomialNB, GaussianNB, BernoulliNB
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.neighbors import KNeighborsRegressor
+
 import csv
 
 X_Train = []
@@ -298,6 +302,60 @@ def multi_layer_perceptron(use_training):
 
         return accuracy/len(predictions)
 
+
+def naive_bayes(use_training):
+    clf = MultinomialNB()
+
+    clf.fit(X_Train, y_train)
+
+    predictions = clf.predict(X_Test)
+
+    if not use_training:
+        return predictions
+    else:
+        accuracy = 0
+        for i in range(0, len(predictions)):
+            if predictions[i] == y_test[i]:
+                accuracy += 1
+
+        return accuracy/len(predictions)
+
+
+def decision_tree(use_training):
+    clf = DecisionTreeClassifier(random_state=0)
+    clf.fit(X_Train, y_train)
+
+    predictions = clf.predict(X_Test)
+
+    if not use_training:
+        return predictions
+    else:
+        accuracy = 0
+        for i in range(0, len(predictions)):
+            if predictions[i] == y_test[i]:
+                accuracy += 1
+
+        return accuracy/len(predictions)
+
+
+def knn_regressor(use_training):
+    clf = KNeighborsRegressor(n_neighbors=4)
+    clf.fit(X_Train, y_train)
+
+    predictions = clf.predict(X_Test)
+    predictions = np.round(predictions)
+
+    if not use_training:
+        return predictions
+    else:
+        accuracy = 0
+        for i in range(0, len(predictions)):
+            if predictions[i] == y_test[i]:
+                accuracy += 1
+
+        return accuracy/len(predictions)
+
+
 '''
     Main function. Start reading the code here
 '''
@@ -316,13 +374,16 @@ def main():
         # "Kernel Density Estimation": kernel_density,
         # "One Class SVM": one_class_svm}
         # "Local Outlier Factor": local_outlier_factor,
-        "Support Vector Classifier": support_vector,
-        "Multi Layer Perceptron": multi_layer_perceptron
+        # "Support Vector Classifier": support_vector,
+        # "Multi Layer Perceptron": multi_layer_perceptron,
+        # "Naive Bayes": naive_bayes,
+        # "Decision Tree": decision_tree,
+        "KNN Regressor": knn_regressor
     }
 
     # Load data from dat file
     X_Total, y_total, X_Test = import_data('sat-test-data.csv.dat', 'sat-train.csv.dat')
-    X_Train = neighbourhood_max(X_Total)
+    X_Train = neighbourhood_average(X_Total)
 
     # Use this loop for testing on training data
     for name, classifier in classifiers.items():
@@ -340,8 +401,8 @@ def main():
 
     # Load the data
     X_Train, y_train, X_Test = import_data('sat-test-data.csv.dat', 'sat-train.csv.dat')
-    X_Train = neighbourhood_max(X_Train)
-    X_Test = neighbourhood_max(X_Test)
+    X_Train = neighbourhood_average(X_Train)
+    X_Test = neighbourhood_average(X_Test)
 
     # Use this loop for testing on test data
     for name, classifier in classifiers.items():
