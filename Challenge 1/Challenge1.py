@@ -214,6 +214,36 @@ def write_to_file(filename,data):
     f.close()
 
 
+def get_features(data):
+    features = {}
+
+    for i in range(0, np.shape(data)[0]):
+        for j in range(0, 4):
+            a = j
+            feature = []
+            for k in range(0, 9):
+                feature.append(data[i][a])
+                a += 4
+
+            if j not in features:
+                features[j] = []
+
+            features[j].append(feature)
+
+    return features
+
+
+def append_features(features, selected_features):
+    new_data = features[selected_features[0]]
+
+    for i in range(1, len(selected_features)):
+        feature = features[selected_features[i]]
+        for j in range(0, len(feature)):
+            new_data[j].extend(feature[j])
+
+
+    return np.array(new_data)
+
 def parse_file(filename):
     data = []
 
@@ -500,6 +530,8 @@ def main():
     X_Total, y_total, X_Test = import_data('sat-test-data.csv.dat', 'sat-train.csv.dat')
     X_Total = neighbourhood_immediate_average(X_Total)
 
+    features = get_features(X_Total)
+    X_Total = append_features(features, [0, 1, 3])
     # Use this loop for testing on training data
     for name, classifier in classifiers.items():
         accuracy = 0
