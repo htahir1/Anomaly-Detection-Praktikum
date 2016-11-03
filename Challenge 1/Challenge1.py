@@ -531,7 +531,7 @@ def main():
     X_Total = neighbourhood_immediate_average(X_Total)
 
     features = get_features(X_Total)
-    X_Total = append_features(features, [0, 1, 3])
+    X_Total = append_features(features, [1, 3])
     # Use this loop for testing on training data
     for name, classifier in classifiers.items():
         accuracy = 0
@@ -550,6 +550,11 @@ def main():
     X_Train, y_train, X_Test = import_data('sat-test-data.csv.dat', 'sat-train.csv.dat')
     X_Train = neighbourhood_immediate_average(X_Train)
     X_Test = neighbourhood_immediate_average(X_Test)
+
+    features = get_features(X_Train)
+    X_Train = append_features(features, [1, 3])
+    features = get_features(X_Test)
+    X_Test = append_features(features, [1, 3])
 
     # Use this loop for testing on test data
     for name, classifier in classifiers.items():
