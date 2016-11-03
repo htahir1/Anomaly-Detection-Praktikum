@@ -9,7 +9,10 @@ from sklearn.neural_network import MLPClassifier
 from sklearn.naive_bayes import MultinomialNB, GaussianNB, BernoulliNB
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.neighbors import KNeighborsRegressor
+from sklearn.cluster import KMeans
+from sklearn.ensemble import RandomForestClassifier
 
+import time
 import csv
 
 X_Train = []
@@ -51,6 +54,80 @@ def neighbourhood_average(data):
                             data[i][a] = sum / count
                 a += 4
 
+
+    f = file("preprocessed_training_data.bin", "wb")
+    np.save(f, data)
+    f.close()
+
+    return data
+
+
+def get_neighbors_mask(index, mask):
+    neighbors = []
+    upper_limit = len(mask)
+
+    if index+1 < upper_limit:
+        neighbors.append(index+1)
+    if index-1 >= 0:
+        neighbors.append(index-1)
+    if index+3 < upper_limit:
+        neighbors.append(index+3)
+    if index-3 >= 0:
+        neighbors.append(index-3)
+
+    return neighbors
+
+
+def get_neighbors(row, col_index):
+    neighbours = []
+    spectrum_index = col_index % 4
+
+    if spectrum_index == 0:
+        mask = [0, 4, 8, 12, 16, 20, 24, 28, 32]
+    elif spectrum_index == 1:
+        mask = [1, 5, 9, 13, 17, 21, 25, 29, 33]
+    elif spectrum_index == 2:
+        mask = [2, 6, 10, 14, 18, 22, 26, 30, 34]
+    elif spectrum_index == 3:
+        mask = [3, 7, 11, 15, 19, 23, 27, 31, 35]
+
+    ns = get_neighbors_mask(int(col_index/4), mask)
+    for i in range(0, len(ns)):
+        neighbours.append(row[mask[ns[i]]])
+
+    return mask, neighbours
+
+
+def neighbourhood_immediate_average(data):
+    '''
+        [
+            [92	115	120	94	84	102	106	79]
+            [84	102	106	79	84	102	102	83]
+        ]
+    '''
+
+    for i in range(0, np.shape(data)[0]):
+        for j in range(0, np.shape(data)[1]):
+            # Replacing NaNs with average of neighbourhood
+            sum = 0
+            count = 0
+            if data[i][j] == -1:  # This means its a nan value
+                l = data[i].tolist()
+                mask, neighbors = get_neighbors(l, j)
+                for neighbor in neighbors:
+                    if neighbor != -1:
+                        sum += neighbor
+                        count += 1
+
+                if count != 0:
+                    data[i][j] = sum / count
+                else:
+                    for neighbor in mask:
+                        if data[i][neighbor] != -1:
+                            sum += data[i][neighbor]
+                            count += 1
+
+                    data[i][j] = sum / count
 
     f = file("preprocessed_training_data.bin", "wb")
     np.save(f, data)
@@ -282,7 +359,7 @@ def support_vector(use_training):
 def multi_layer_perceptron(use_training):
     clf = MLPClassifier(activation='relu', alpha=1e-7, batch_size='auto',
                         beta_1=0.9, beta_2=0.999, early_stopping=False,
-                        epsilon=1e-08, hidden_layer_sizes=(5, 2), learning_rate='adaptive',
+                        epsilon=1e-08, hidden_layer_sizes=(1, 100), learning_rate='adaptive',
                         learning_rate_init=0.001, max_iter=10000, momentum=0.9,
                         nesterovs_momentum=True, power_t=0.5, random_state=1000, shuffle=True,
                         solver='lbfgs', tol=0.0001, validation_fraction=0.1, verbose=False,
@@ -322,7 +399,7 @@ def naive_bayes(use_training):
 
 
 def decision_tree(use_training):
-    clf = DecisionTreeClassifier(random_state=0)
+    clf = DecisionTreeClassifier(random_state=2)
     clf.fit(X_Train, y_train)
 
     predictions = clf.predict(X_Test)
@@ -339,7 +416,7 @@ def decision_tree(use_training):
 
 
 def knn_regressor(use_training):
-    clf = KNeighborsRegressor(n_neighbors=4)
+    clf = KNeighborsRegressor(n_neighbors=3)
     clf.fit(X_Train, y_train)
 
     predictions = clf.predict(X_Test)
@@ -355,6 +432,42 @@ def knn_regressor(use_training):
 
         return accuracy/len(predictions)
 
+
+def k_means(use_training):
+    clf = KMeans(n_clusters=6)
+    clf.fit(X_Train, y_train)
+
+    predictions = clf.predict(X_Test)
+    # predictions = np.round(predictions)
+
+    if not use_training:
+        return predictions
+    else:
+        accuracy = 0
+        for i in range(0, len(predictions)):
+            if predictions[i] == y_test[i]:
+                accuracy += 1
+
+        return accuracy/len(predictions)
+
+
+
+def random_forest(use_training):
+    clf = RandomForestClassifier(criterion="entropy", n_estimators=20)
+    clf.fit(X_Train, y_train)
+
+    predictions = clf.predict(X_Test)
+    # predictions = np.round(predictions)
+
+    if not use_training:
+        return predictions
+    else:
+        accuracy = 0
+        for i in range(0, len(predictions)):
+            if predictions[i] == y_test[i]:
+                accuracy += 1
+
+        return accuracy/len(predictions)
 
 '''
     Main function. Start reading the code here
@@ -372,18 +485,20 @@ def main():
     # Define "classifiers" to be used
     classifiers = {
         # "Kernel Density Estimation": kernel_density,
-        # "One Class SVM": one_class_svm}
+        # "One Class SVM": one_class_svm,
         # "Local Outlier Factor": local_outlier_factor,
-        # "Support Vector Classifier": support_vector,
-        # "Multi Layer Perceptron": multi_layer_perceptron,
-        # "Naive Bayes": naive_bayes,
-        # "Decision Tree": decision_tree,
-        "KNN Regressor": knn_regressor
+        "Support Vector Classifier": support_vector,
+        "Multi Layer Perceptron": multi_layer_perceptron,
+        "Naive Bayes": naive_bayes,
+        "Decision Tree": decision_tree,
+        "KNN Regressor": knn_regressor,
+        "Random Forest": random_forest
+        # "K Means": k_means
     }
 
     # Load data from dat file
     X_Total, y_total, X_Test = import_data('sat-test-data.csv.dat', 'sat-train.csv.dat')
-    X_Train = neighbourhood_average(X_Total)
+    X_Total = neighbourhood_immediate_average(X_Total)
 
     # Use this loop for testing on training data
     for name, classifier in classifiers.items():
@@ -401,8 +516,8 @@ def main():
 
     # Load the data
     X_Train, y_train, X_Test = import_data('sat-test-data.csv.dat', 'sat-train.csv.dat')
-    X_Train = neighbourhood_average(X_Train)
-    X_Test = neighbourhood_average(X_Test)
+    X_Train = neighbourhood_immediate_average(X_Train)
+    X_Test = neighbourhood_immediate_average(X_Test)
 
     # Use this loop for testing on test data
     for name, classifier in classifiers.items():
