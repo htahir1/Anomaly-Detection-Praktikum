@@ -389,7 +389,7 @@ def support_vector(use_training):
 def multi_layer_perceptron(use_training):
     clf = MLPClassifier(activation='relu', alpha=1e-7, batch_size='auto',
                         beta_1=0.9, beta_2=0.999, early_stopping=False,
-                        epsilon=1e-08, hidden_layer_sizes=(1, 100), learning_rate='adaptive',
+                        epsilon=1e-08, hidden_layer_sizes=(5, 2), learning_rate='adaptive',
                         learning_rate_init=0.001, max_iter=10000, momentum=0.9,
                         nesterovs_momentum=True, power_t=0.5, random_state=1000, shuffle=True,
                         solver='lbfgs', tol=0.0001, validation_fraction=0.1, verbose=False,
@@ -446,7 +446,7 @@ def decision_tree(use_training):
 
 
 def knn_regressor(use_training):
-    clf = KNeighborsRegressor(n_neighbors=3)
+    clf = KNeighborsRegressor(n_neighbors=4)
     clf.fit(X_Train, y_train)
 
     predictions = clf.predict(X_Test)
@@ -528,10 +528,10 @@ def main():
 
     # Load data from dat file
     X_Total, y_total, X_Test = import_data('sat-test-data.csv.dat', 'sat-train.csv.dat')
-    X_Total = neighbourhood_immediate_average(X_Total)
+    X_Total = neighbourhood_average(X_Total)
 
-    features = get_features(X_Total)
-    X_Total = append_features(features, [1, 3])
+    # features = get_features(X_Total)
+    # X_Total = append_features(features, [0, 1, 2, 3])
     # Use this loop for testing on training data
     for name, classifier in classifiers.items():
         accuracy = 0
@@ -548,13 +548,13 @@ def main():
 
     # Load the data
     X_Train, y_train, X_Test = import_data('sat-test-data.csv.dat', 'sat-train.csv.dat')
-    X_Train = neighbourhood_immediate_average(X_Train)
-    X_Test = neighbourhood_immediate_average(X_Test)
+    X_Train = neighbourhood_average(X_Train)
+    X_Test = neighbourhood_average(X_Test)
 
-    features = get_features(X_Train)
-    X_Train = append_features(features, [1, 3])
-    features = get_features(X_Test)
-    X_Test = append_features(features, [1, 3])
+    # features = get_features(X_Train)
+    # X_Train = append_features(features, [0, 1, 2, 3])
+    # features = get_features(X_Test)
+    # X_Test = append_features(features, [0, 1, 2, 3])
 
     # Use this loop for testing on test data
     for name, classifier in classifiers.items():
