@@ -1,0 +1,8 @@
+KNN: 98.78269, 96.206
+SVC: 98.37678, 97.196
+Random Forest (40)(With feature weighing): 98.76016, 97.608
+Random Forest (30) (Without feature weighing): 98.69247, 97.608
+Random Forest (40) (Without feature weighing): 98.71504, 99.0009
+Random Forest (60) (Without feature weighing): 98.82778, 97.608
+Random Forest (200) (Without): 98.82776, 98.075
+Random Forest (400) (Without): 98.78269, 97.608

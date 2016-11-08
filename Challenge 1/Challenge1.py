@@ -201,6 +201,9 @@ def missing_val_max(data):
     return new_data
 
 
+def get_middle_pixel_features(data):
+    return (data.transpose()[16:20]).transpose()
+
 def write_to_file(filename,data):
     f = open(filename, 'w')
     f.write('Id,Expected\n')
@@ -446,7 +449,7 @@ def decision_tree(use_training):
 
 
 def knn_regressor(use_training):
-    clf = KNeighborsRegressor(n_neighbors=4)
+    clf = KNeighborsRegressor(n_neighbors=5, p=2)
     clf.fit(X_Train, y_train)
 
     predictions = clf.predict(X_Test)
@@ -483,7 +486,7 @@ def k_means(use_training):
 
 
 def random_forest(use_training):
-    clf = RandomForestClassifier(criterion="entropy", n_estimators=20)
+    clf = RandomForestClassifier(criterion="entropy", n_estimators=40)
     clf.fit(X_Train, y_train)
 
     predictions = clf.predict(X_Test)
@@ -515,12 +518,12 @@ def main():
     # Define "classifiers" to be used
     classifiers = {
         # "Kernel Density Estimation": kernel_density,
-        # "One Class SVM": one_class_svm,
+        #"One Class SVM": one_class_svm,
         # "Local Outlier Factor": local_outlier_factor,
-        "Support Vector Classifier": support_vector,
-        "Multi Layer Perceptron": multi_layer_perceptron,
-        "Naive Bayes": naive_bayes,
-        "Decision Tree": decision_tree,
+        # "Support Vector Classifier": support_vector,
+        #"Multi Layer Perceptron": multi_layer_perceptron,
+        #"Naive Bayes": naive_bayes,
+        #"Decision Tree": decision_tree,
         "KNN Regressor": knn_regressor,
         "Random Forest": random_forest
         # "K Means": k_means
@@ -528,10 +531,11 @@ def main():
 
     # Load data from dat file
     X_Total, y_total, X_Test = import_data('sat-test-data.csv.dat', 'sat-train.csv.dat')
-    X_Total = neighbourhood_average(X_Total)
-
+    X_Total = neighbourhood_immediate_average(X_Total)
+    X_Total = get_middle_pixel_features(X_Total)
+    #
     # features = get_features(X_Total)
-    # X_Total = append_features(features, [0, 1, 2, 3])
+    # X_Total = append_features(features, [0, 1, 3])
     # Use this loop for testing on training data
     for name, classifier in classifiers.items():
         accuracy = 0
@@ -548,13 +552,16 @@ def main():
 
     # Load the data
     X_Train, y_train, X_Test = import_data('sat-test-data.csv.dat', 'sat-train.csv.dat')
-    X_Train = neighbourhood_average(X_Train)
-    X_Test = neighbourhood_average(X_Test)
+    X_Train = neighbourhood_immediate_average(X_Train)
+    X_Test = neighbourhood_immediate_average(X_Test)
+
+    X_Train = get_middle_pixel_features(X_Train)
+    X_Test = get_middle_pixel_features(X_Test)
 
     # features = get_features(X_Train)
-    # X_Train = append_features(features, [0, 1, 2, 3])
+    # X_Train = append_features(features, [0, 1, 3])
     # features = get_features(X_Test)
-    # X_Test = append_features(features, [0, 1, 2, 3])
+    # X_Test = append_features(features, [0, 1, 3])
 
     # Use this loop for testing on test data
     for name, classifier in classifiers.items():
