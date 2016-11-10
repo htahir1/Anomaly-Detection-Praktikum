@@ -46,7 +46,7 @@ def import_data():
 
     hotel_data = pd.read_csv(hotel_file_name, sep=';', error_bad_lines=False)
 
-    return testing_data, training_data, reviewer_data, hotel_data
+    return training_data, testing_data, reviewer_data, hotel_data
 
 
 def remove_anomalies(dataset, labels):
@@ -98,24 +98,24 @@ def main():
     }
 
     # Load data from dat file
-    X_Total, y_total, X_Test = import_data()
+    training_data, testing_data, reviewer_data, hotel_data = import_data()
 
     # Use this loop for testing on training data
-    for name, classifier in classifiers.items():
-        accuracy = 0
-        for train_index, test_index in kfold.split(X_Total):
-            # Use indices to seperate out training and test data
-            X_Train, X_Test = X_Total[train_index], X_Total[test_index]
-            y_train, y_test = y_total[train_index], y_total[test_index]
-
-            accuracy += execute_classifier(True, classifier)
-
-        total = accuracy / num_splits
-        print "Accuracy of {} is {} %".format(name, round((total)*100, 5))
+    # for name, classifier in classifiers.items():
+    #     accuracy = 0
+    #     for train_index, test_index in kfold.split(X_Total):
+    #         # Use indices to seperate out training and test data
+    #         X_Train, X_Test = X_Total[train_index], X_Total[test_index]
+    #         y_train, y_test = y_total[train_index], y_total[test_index]
+    #
+    #         accuracy += execute_classifier(True, classifier)
+    #
+    #     total = accuracy / num_splits
+    #     print "Accuracy of {} is {} %".format(name, round((total)*100, 5))
 
 
     # Load the data
-    X_Train, y_train, X_Test = import_data()
+    training_data, testing_data, reviewer_data, hotel_data = import_data()
 
     # Use this loop for testing on test data
     for name, classifier in classifiers.items():
