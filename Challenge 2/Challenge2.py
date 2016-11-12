@@ -5,6 +5,13 @@ from sklearn.model_selection import KFold
 import pandas as pd
 import time
 import csv
+import os
+import re
+from stemming.porter import stem
+import sys
+import math
+import string
+import dbSetup
 
 training_data = []
 testing_data = []
@@ -14,6 +21,90 @@ hotel_data = []
 '''
     Helper functions
 '''
+# Takes a string and sees if there's a number in it
+def has_number(word):
+    for i in word:
+        if i >= '0' and i <= '9':
+            return False
+    return True
+
+
+# Takes a string and checks if its a number
+def is_number(s):
+    try:
+        int(s)
+        return True
+    except ValueError:
+        return False
+
+
+# Parses stop word list and returns an array of stop words
+# Stop word list should be a list of words separated by end lines
+def read_stop_words():
+    f = open('stop.txt', 'r')
+    stop_words = f.read()
+    stop_words = stop_words.split('\n')
+    return stop_words
+
+
+# Removes punctuation from a string
+def remove_punctuation(s):
+    replace_punctuation = string.maketrans(string.punctuation, ' '*len(string.punctuation))
+    return s.translate(replace_punctuation)
+
+
+# Takes a word and normalizes it to a type
+def normalize_word(word):
+    return stem(word)
+
+
+# Takes some data and removes punctuation and whitespace
+def clean_data(some_data):
+    some_data = remove_punctuation(some_data)
+    some_data = re.sub("[\t\n]", ' ', some_data)
+    return some_data
+
+
+# Breaks corpus down into an inverted index
+def make_index_1():
+    # traverse root directory, and list directories as dirs and files as files
+    global corpus_path
+    global index_terms
+    global index_tokens
+    token_count = 0
+    stop_word_list = read_stop_words()
+    for root, dirs, files in os.walk(corpus_path):
+        for file_id in files:
+            folder = os.path.basename(root) + '/'
+            key = folder + file_id
+            f = open(corpus_path + key, 'r')
+            file_data = f.read()
+            file_data = clean_data(file_data)
+            file_data = file_data.split(' ')  # split file_data
+
+            for word in file_data:  # makes the inverted index
+                if len(word) > 1:
+                    if word != 'html' and word != 'pre':
+                            token_count += 1
+                            try:
+                                if word in index_tokens:
+                                    index_tokens[word] += 1
+                                else:
+                                    index_tokens[word] = 1
+                            except:
+                                print word
+
+                            word = word.lower()
+                            if word not in stop_word_list:
+                                word = normalize_word(word)
+                                if word in index_terms:
+                                    index_terms[word] += 1
+                                else:
+                                    index_terms[word] = 1
+
+    return token_count
+
+
 def write_to_file(filename,data):
     f = open(filename, 'w')
     f.write('Id,Expected\n')
@@ -25,28 +116,6 @@ def write_to_file(filename,data):
         f.write('\n')
         i = i+1
     f.close()
-
-
-def import_data():
-    training_data = []
-    testing_data = []
-    reviewer_data = []
-    hotel_data = []
-
-    hotel_file_name = 'challenge_data/yelp_data_hotel.dat'
-    reviewer_file_name =  'challenge_data/yelp_data_reviewer.dat'
-    test_file_name =  'challenge_data/yelp_data_test.dat'
-    train_file_name =  'challenge_data/yelp_data_train.dat'
-
-    testing_data = pd.read_csv(train_file_name, sep=';', error_bad_lines=False)
-
-    training_data = pd.read_csv(test_file_name, sep=';', error_bad_lines=False)
-
-    reviewer_data = pd.read_csv(reviewer_file_name, sep=';', error_bad_lines=False)
-
-    hotel_data = pd.read_csv(hotel_file_name, sep=';', error_bad_lines=False)
-
-    return training_data, testing_data, reviewer_data, hotel_data
 
 
 def remove_anomalies(dataset, labels):
@@ -78,6 +147,13 @@ def main():
     global testing_data
     global reviewer_data
     global hotel_data
+
+    reset_database = False
+
+    if reset_database:
+        dbSetup.setupDatabase()
+
+    dbSetup.initSQLConnection()
 
     # Make a kfold object that will split data into k training and test sets
     num_splits = 6
@@ -115,7 +191,6 @@ def main():
 
 
     # Load the data
-    training_data, testing_data, reviewer_data, hotel_data = import_data()
 
     # Use this loop for testing on test data
     for name, classifier in classifiers.items():
