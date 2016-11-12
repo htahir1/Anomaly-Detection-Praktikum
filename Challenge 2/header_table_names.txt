@@ -1,8 +1,13 @@
 HoteL: 
 hotelID;name;location;reviewCount;rating;categories;address;AcceptsCreditCards;PriceRange;WiFi;webSite;phoneNumber;filReviewCount
 
-Reviewier: reviewerID;name;location;yelpJoinDate;friendCount;reviewCount;firstCount;usefulCount;coolCount;funnyCount;complimentCount;tipCount;fanCount
+Reviewer: reviewerID;name;location;yelpJoinDate;friendCount;reviewCount;firstCount;usefulCount;coolCount;funnyCount;complimentCount;tipCount;fanCount
 
 Reviews Test: id,date,reviewID,reviewerID,reviewContent,rating,usefulCount,coolCount,funnyCount,hotelID
 
 Reviews Train: date,reviewID,reviewerID,reviewContent,rating,usefulCount,coolCount,funnyCount,fake,hotelID
+
+reviews_test
+reviews_train
+reviewer
+hotel
