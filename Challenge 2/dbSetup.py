@@ -195,9 +195,29 @@ def setupDatabase():
 
 
 def getHotelIds():
-    query = "SELECT * FROM " + table_hotel
+    query = "SELECT hotel_id FROM " + table_hotel
     dbi.getCursor().execute(query)
     return dbi.getCursor().fetchall()
+
+def getFeaturesByReview(train_mode):
+    if train_mode:
+        table =table_reviews_train
+    else:
+        table = table_reviews_test
+    query = "SELECT rt.reviewID, (LENGTH(rt.reviewContent)- LENGTH(REPLACE(rt.reviewContent, ' ', ''))) reviewLength,rt2.avgRatingByReviewer as avgRatingByReviewer,"
+    query = query + " rt3.avgRatingByHotel as avgRatingByHotel, rt4.maximumNumReviewsPerDay as maximumNumReviewsPerDay FROM "+ table+" as rt "
+    query = query + " LEFT JOIN ( SELECT reviewerID, AVG(rating) as avgRatingByReviewer FROM " + table + " GROUP BY reviewerID) as rt2 ON rt.reviewerID = rt2.reviewerID "
+    query = query + " LEFT JOIN ( SELECT reviewerID,hotelID, AVG(rating) as avgRatingByHotel FROM "+table+" GROUP BY hotelID) as rt3 ON rt.hotelID = rt3.hotelID "
+    query = query + " LEFT JOIN ( SELECT rt1.reviewID, rt1.date, rt4.maximumNumReviewsPerDay FROM "+table+" rt1 INNER JOIN (SELECT rev_t.reviewID, rev_t.reviewerID, date, COUNT (DISTINCT reviewID) as 'maximumNumReviewsPerDay' FROM "
+    query = query +table +" rev_t GROUP BY rev_t.reviewerID, date) as rt4 ON rt1.date = rt4.date AND rt1.reviewerID = rt4.reviewerID ) as rt4 ON rt.reviewID = rt4.reviewID "
+    dbi.getCursor().execute(query)
+    headers = list()
+    headers.append(table_reviews_test_reviewID)
+    headers.append('reviewLength')
+    headers.append('avgRatingReviewer')
+    headers.append('avgRatingHotel')
+    headers.append('avgPerReviewerPerDay')
+    return (dbi.getCursor().fetchall(), headers)
 
 
 def showProgress(current, max, msg):

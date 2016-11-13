@@ -139,6 +139,17 @@ def execute_classifier(use_training, clf):
 
         return accuracy/len(predictions)
 
+def writeExtendedFeatures(header, data, filename):
+    with open(filename, 'w') as file:
+        for i in range(0,len(header)-1):
+            file.write(str(header[i]))
+            file.write(";")
+        file.write(str(header[len(header)-1])+"\n")
+
+        for row in data:
+            for i in range(0,len(row)-1):
+                file.write(str(row[i])+";")
+            file.write("%s\n" % str(row[len(row)-1]))
 '''
     Main function. Start reading the code here
 '''
@@ -149,12 +160,20 @@ def main():
     global hotel_data
 
     reset_database = False
-
+    reset_parameters = True
+    train_mode = True
+    type = 'train'
     if reset_database:
         dbSetup.setupDatabase()
 
-    dbSetup.initSQLConnection()
+    if reset_parameters:
+        dbSetup.initSQLConnection()
+        data, header = dbSetup.getFeaturesByReview(train_mode)
+        writeExtendedFeatures(header, data,'yelp_data_'+type+'_extended_features_Reviews.dat')
+        print (header)
 
+
+    #write_to_file('yelp_data_test_review_length.csv.dat', ret)
     # Make a kfold object that will split data into k training and test sets
     num_splits = 6
     kfold = KFold(n_splits=num_splits)
@@ -174,7 +193,7 @@ def main():
     }
 
     # Load data from dat file
-    training_data, testing_data, reviewer_data, hotel_data = import_data()
+
 
     # Use this loop for testing on training data
     # for name, classifier in classifiers.items():
