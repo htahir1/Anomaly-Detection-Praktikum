@@ -194,29 +194,10 @@ def setupDatabase():
     dbi.close()
 
 
-def getAllPersonIds():
-    entries = dbitools.retrieve(dbi.getCursor(), table_people, '', [table_people_id])
-    return [entry[table_people_id] for entry in entries]
-
-
-def getPerson(id):
-    return dbitools.retrieveRow(dbi.getCursor(), table_people, id)
-
-def addOccupation(title):
-    return dbitools.insert(dbi.getCursor(), table_occupation, {table_occupation_title: title})
-
-
-def addPerson(data):
-    return dbitools.insert(dbi.getCursor(), table_people, data)
-
-def getOccupationId(title):
-    row = dbitools.retrieve(dbi.getCursor(), table_occupation,
-                            'WHERE ' + table_occupation_title + '=' + "'" + title + "'")
-
-    if len(row) == 0:
-        return None
-    else:
-        return row[0][table_occupation_id]
+def getHotelIds():
+    query = "SELECT * FROM " + table_hotel
+    dbi.getCursor().execute(query)
+    return dbi.getCursor().fetchall()
 
 
 def showProgress(current, max, msg):
