@@ -53,6 +53,33 @@ def is_number(s):
         return False
 
 
+def parse_file(filename):
+    data = []
+
+    with open(filename, 'rb') as f:
+        reader = csv.reader(f)
+        for row in reader:
+            dataline = row.pop(0)  # Get rid of the ID
+            dataline = map(float, dataline)
+            data.append(dataline)
+
+    return np.array(data)
+
+
+def import_data(filename, is_training=True):
+    x = []
+    y = []
+
+    x = parse_file(filename)
+
+    if is_training:
+        last_col_index = x.shape[1] - 1
+        y = x[:, last_col_index]  # Last column in labels
+        x = np.delete(x, -1, 1)  # delete last column of xtrain
+
+    return x, y
+
+
 # Parses stop word list and returns an array of stop words
 # Stop word list should be a list of words separated by end lines
 def read_stop_words():
