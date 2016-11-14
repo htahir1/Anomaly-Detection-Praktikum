@@ -149,12 +149,16 @@ def setupTables(dbcursor):
 
 
 def import_data():
+    print "Importing test data from csv to database.."
     testing_data = pd.read_csv(data_review_test, sep=';', error_bad_lines=False, encoding='utf-8')
 
+    print "Importing train data from csv to database.."
     training_data = pd.read_csv(data_review_train, sep=';', error_bad_lines=False, encoding='utf-8')
 
+    print "Importing reviewer data from csv to database.."
     reviewer_data = pd.read_csv(data_reviewer, sep=';', error_bad_lines=False, encoding='utf-8')
 
+    print "Importing hotel data from csv to database.."
     hotel_data = pd.read_csv(data_hotel, sep=';', error_bad_lines=False, encoding='utf-8')
 
     print list(testing_data.columns.values)
@@ -201,7 +205,7 @@ def getHotelIds():
 
 def getFeaturesByReview(train_mode):
     if train_mode:
-        table =table_reviews_train
+        table = table_reviews_train
     else:
         table = table_reviews_test
     query = "SELECT rt.reviewID, (LENGTH(rt.reviewContent)- LENGTH(REPLACE(rt.reviewContent, ' ', ''))) reviewLength, rt2.ratingAbv3 as ratingAbv3, rt2.allCount as allRatingsCount,"
@@ -228,13 +232,13 @@ def getFeaturesByReview(train_mode):
     processed = []
     for item in ret:
         tmp_list = list(item)
-        print str(tmp_list[0]) + str(tmp_list[2]) +'-'+str(tmp_list[3])
-        tmp_list[2] = float(tmp_list[2])/tmp_list[3]
-        tmp_list.pop(3)
-        item = tuple(tmp_list)
-        tmp_list[3] = tmp_list[3] - tmp_list[4]#rating - avg
-        tmp_list.pop(4)
-        processed.append(tmp_list)
+        if None not in tmp_list:
+            tmp_list[2] = float(tmp_list[2])/tmp_list[3]
+            tmp_list.pop(3)
+            item = tuple(tmp_list)
+            tmp_list[3] = tmp_list[3] - tmp_list[4]#rating - avg
+            tmp_list.pop(4)
+            processed.append(tmp_list)
     return (processed, headers)
 
 

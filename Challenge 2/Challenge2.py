@@ -12,17 +12,43 @@ import sys
 import math
 import string
 import dbSetup
+from sklearn.ensemble import RandomForestClassifier
+from sklearn import svm
+from sklearn.neighbors import KernelDensity
+import numpy as np
+from sklearn.neighbors import NearestNeighbors
+from sklearn.neural_network import MLPClassifier
+from sklearn.naive_bayes import MultinomialNB, GaussianNB, BernoulliNB
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.neighbors import KNeighborsRegressor
+from sklearn.cluster import KMeans
 
 training_data = []
 testing_data = []
 reviewer_data = []
 hotel_data = []
-feature_list_path_type = 'train'
-feature_list_path = 'challenge_data/yelp_data_' + feature_list_path_type + '_extended_features_Reviews.dat'
+X_train = []
+y_train = []
+X_test = []
+y_test = []
 
 '''
     Helper functions
 '''
+def reset_data():
+    global X_train
+    global y_train
+    global X_test
+
+    X_train = import_data(True)
+    np.random.shuffle(X_train)
+    last_col_index = X_train.shape[1] - 1
+    y_train = X_train[:, last_col_index]  # Last column in labels
+    X_train = np.delete(X_train, -1, 1)  # delete last column of xtrain
+
+    X_test = import_data(False)
+
+
 def writeExtendedFeatures(header, data, filename):
     with open(filename, 'w') as file:
         for i in range(0,len(header)-1):
@@ -36,48 +62,37 @@ def writeExtendedFeatures(header, data, filename):
             file.write("%s\n" % str(row[len(row)-1]))
 
 
-# Takes a string and sees if there's a number in it
-def has_number(word):
-    for i in word:
-        if i >= '0' and i <= '9':
-            return False
-    return True
+def get_file_name(train_mode):
+    if train_mode:
+        feature_list_path_type = 'train'
+    else:
+        feature_list_path_type = 'test'
+
+    feature_list_path = 'challenge_data/yelp_data_' + feature_list_path_type + '_extended_features_Reviews.dat'
+
+    return feature_list_path
 
 
-# Takes a string and checks if its a number
-def is_number(s):
-    try:
-        int(s)
-        return True
-    except ValueError:
-        return False
-
-
-def parse_file(filename):
+def import_data(train_mode):
     data = []
+    count = 0
+
+    filename = get_file_name(train_mode)
 
     with open(filename, 'rb') as f:
         reader = csv.reader(f)
         for row in reader:
-            dataline = row.pop(0)  # Get rid of the ID
-            dataline = map(float, dataline)
-            data.append(dataline)
+            if count == 0:
+                count += 1
+            else:
+                if 'None' not in row:
+                    row.pop(0)  # Get rid of the ID
+                    dataline = [w.replace('N', '0') for w in row]  # Convert NaN to -1
+                    dataline = [w.replace('Y', '1') for w in dataline]  # Convert NaN to -1
+                    dataline = map(float, dataline)
+                    data.append(dataline)
 
     return np.array(data)
-
-
-def import_data(filename, is_training=True):
-    x = []
-    y = []
-
-    x = parse_file(filename)
-
-    if is_training:
-        last_col_index = x.shape[1] - 1
-        y = x[:, last_col_index]  # Last column in labels
-        x = np.delete(x, -1, 1)  # delete last column of xtrain
-
-    return x, y
 
 
 # Parses stop word list and returns an array of stop words
@@ -89,72 +104,14 @@ def read_stop_words():
     return stop_words
 
 
-# Removes punctuation from a string
-def remove_punctuation(s):
-    replace_punctuation = string.maketrans(string.punctuation, ' '*len(string.punctuation))
-    return s.translate(replace_punctuation)
-
-
-# Takes a word and normalizes it to a type
-def normalize_word(word):
-    return stem(word)
-
-
-# Takes some data and removes punctuation and whitespace
-def clean_data(some_data):
-    some_data = remove_punctuation(some_data)
-    some_data = re.sub("[\t\n]", ' ', some_data)
-    return some_data
-
-
-# Breaks corpus down into an inverted index
-def make_index_1():
-    # traverse root directory, and list directories as dirs and files as files
-    global corpus_path
-    global index_terms
-    global index_tokens
-    token_count = 0
-    stop_word_list = read_stop_words()
-    for root, dirs, files in os.walk(corpus_path):
-        for file_id in files:
-            folder = os.path.basename(root) + '/'
-            key = folder + file_id
-            f = open(corpus_path + key, 'r')
-            file_data = f.read()
-            file_data = clean_data(file_data)
-            file_data = file_data.split(' ')  # split file_data
-
-            for word in file_data:  # makes the inverted index
-                if len(word) > 1:
-                    if word != 'html' and word != 'pre':
-                            token_count += 1
-                            try:
-                                if word in index_tokens:
-                                    index_tokens[word] += 1
-                                else:
-                                    index_tokens[word] = 1
-                            except:
-                                print word
-
-                            word = word.lower()
-                            if word not in stop_word_list:
-                                word = normalize_word(word)
-                                if word in index_terms:
-                                    index_terms[word] += 1
-                                else:
-                                    index_terms[word] = 1
-
-    return token_count
-
-
-def write_to_file(filename,data):
+def write_to_file(filename, data):
     f = open(filename, 'w')
     f.write('Id,Expected\n')
-    i = 1
+    i = 0
     for item in data:
         f.write('%s' % i)
         f.write(',')
-        f.write('%s' % item)
+        f.write('%s' % int(item))
         f.write('\n')
         i = i+1
     f.close()
@@ -166,9 +123,9 @@ def remove_anomalies(dataset, labels):
 
 
 def execute_classifier(use_training, clf):
-    clf.fit(X_Train, y_train)
+    clf.fit(X_train, y_train)
 
-    predictions = clf.predict(X_Test)
+    predictions = clf.predict(X_test)
     predictions = np.round(predictions)
 
     if not use_training:
@@ -191,24 +148,29 @@ def main():
     global reviewer_data
     global hotel_data
     global feature_list_path
+    global X_train
+    global X_test
+    global y_train
+    global y_test
 
     reset_database = False
-    reset_parameters = True
-    train_mode = True
+    reset_parameters = False
 
     if reset_database:
         dbSetup.setupDatabase()
 
     if reset_parameters:
         dbSetup.initSQLConnection()
-        data, header = dbSetup.getFeaturesByReview(train_mode)
-        writeExtendedFeatures(header, data, feature_list_path)
+        data, header = dbSetup.getFeaturesByReview(True)
+        writeExtendedFeatures(header, data, get_file_name(True))
         print (header)
+        data, header = dbSetup.getFeaturesByReview(False)
+        writeExtendedFeatures(header, data, get_file_name(False))
 
+    reset_data()
 
-    #write_to_file('yelp_data_test_review_length.csv.dat', ret)
-    # Make a kfold object that will split data into k training and test sets
-    num_splits = 6
+    num_splits = 5
+
     kfold = KFold(n_splits=num_splits)
 
     # Define "classifiers" to be used
@@ -216,37 +178,38 @@ def main():
         # "Kernel Density Estimation": kernel_density,
         #"One Class SVM": one_class_svm,
         # "Local Outlier Factor": local_outlier_factor,
-        # "Support Vector Classifier": support_vector,
+        "Support Vector Classifier": svm.SVC(),
         #"Multi Layer Perceptron": multi_layer_perceptron,
-        #"Naive Bayes": naive_bayes,
+        "Naive Bayes": GaussianNB(),
         #"Decision Tree": decision_tree,
         # "KNN Regressor": knn_regressor,
-        # "Random Forest": random_forest
+        "Random Forest": RandomForestClassifier(criterion="entropy", n_estimators=40)
         # "K Means": k_means
     }
 
     # Load data from dat file
 
+    X_total = X_train
+    y_total = y_train
 
-    # Use this loop for testing on training data
-    # for name, classifier in classifiers.items():
-    #     accuracy = 0
-    #     for train_index, test_index in kfold.split(X_Total):
-    #         # Use indices to seperate out training and test data
-    #         X_Train, X_Test = X_Total[train_index], X_Total[test_index]
-    #         y_train, y_test = y_total[train_index], y_total[test_index]
-    #
-    #         accuracy += execute_classifier(True, classifier)
-    #
-    #     total = accuracy / num_splits
-    #     print "Accuracy of {} is {} %".format(name, round((total)*100, 5))
+    for name, classifier in classifiers.items():
+        accuracy = 0
+        for train_index, test_index in kfold.split(X_total):
+            # Use indices to seperate out training and test data
+            X_train, X_test = X_total[train_index], X_total[test_index]
+            y_train, y_test = y_total[train_index], y_total[test_index]
+
+            accuracy += execute_classifier(True, classifier)
+
+        total = accuracy / num_splits
+        print "Accuracy of {} is {} %".format(name, round((total)*100, 5))
 
 
-    # Load the data
+    reset_data()
 
     # Use this loop for testing on test data
     for name, classifier in classifiers.items():
-        y_test = execute_classifier(True, classifier)
+        y_test = execute_classifier(False, classifier)
         write_to_file(name + '_output.csv.dat', y_test)
 
 
