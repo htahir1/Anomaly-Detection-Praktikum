@@ -2,7 +2,7 @@
 
 import sys, sqlite3, json, os
 from dbInterface import dbInterface, dbTools
-import numpy
+import numpy as np
 import pandas as pd
 
 data_dir = 'challenge_data/'
@@ -204,9 +204,12 @@ def getFeaturesByReview(train_mode):
         table =table_reviews_train
     else:
         table = table_reviews_test
-    query = "SELECT rt.reviewID, (LENGTH(rt.reviewContent)- LENGTH(REPLACE(rt.reviewContent, ' ', ''))) reviewLength,rt2.avgRatingByReviewer as avgRatingByReviewer,"
-    query = query + " rt3.avgRatingByHotel as avgRatingByHotel, rt4.maximumNumReviewsPerDay as maximumNumReviewsPerDay FROM "+ table+" as rt "
-    query = query + " LEFT JOIN ( SELECT reviewerID, AVG(rating) as avgRatingByReviewer FROM " + table + " GROUP BY reviewerID) as rt2 ON rt.reviewerID = rt2.reviewerID "
+    query = "SELECT rt.reviewID, (LENGTH(rt.reviewContent)- LENGTH(REPLACE(rt.reviewContent, ' ', ''))) reviewLength, rt2.ratingAbv3 as ratingAbv3, rt2.allCount as allRatingsCount,"
+    query = query + " rt.rating, rt3.avgRatingByHotel as avgRatingByHotel, rt4.maximumNumReviewsPerDay as maximumNumReviewsPerDay "
+    if train_mode:
+        query = query + " ,rt.fake as fake "
+    query = query + "FROM "+ table+" as rt "
+    query = query + " LEFT JOIN ( SELECT reviewerID, COUNT(CASE WHEN rating >3 THEN 1 ELSE NULL END) as ratingAbv3, COUNT(*) as allCount FROM " + table + " GROUP BY reviewerID) as rt2 ON rt.reviewerID = rt2.reviewerID "
     query = query + " LEFT JOIN ( SELECT reviewerID,hotelID, AVG(rating) as avgRatingByHotel FROM "+table+" GROUP BY hotelID) as rt3 ON rt.hotelID = rt3.hotelID "
     query = query + " LEFT JOIN ( SELECT rt1.reviewID, rt1.date, rt4.maximumNumReviewsPerDay FROM "+table+" rt1 INNER JOIN (SELECT rev_t.reviewID, rev_t.reviewerID, date, COUNT (DISTINCT reviewID) as 'maximumNumReviewsPerDay' FROM "
     query = query +table +" rev_t GROUP BY rev_t.reviewerID, date) as rt4 ON rt1.date = rt4.date AND rt1.reviewerID = rt4.reviewerID ) as rt4 ON rt.reviewID = rt4.reviewID "
@@ -214,10 +217,25 @@ def getFeaturesByReview(train_mode):
     headers = list()
     headers.append(table_reviews_test_reviewID)
     headers.append('reviewLength')
-    headers.append('avgRatingReviewer')
-    headers.append('avgRatingHotel')
-    headers.append('avgPerReviewerPerDay')
-    return (dbi.getCursor().fetchall(), headers)
+    headers.append('percentPositiveReviews') #above 3
+    headers.append('reviewerDeviation')
+    headers.append('maxNumberofReviews')
+    headers.append('maxNumberofReviews')
+    if train_mode:
+        headers.append('label')
+    ret = dbi.getCursor().fetchall()
+
+    processed = []
+    for item in ret:
+        tmp_list = list(item)
+        print str(tmp_list[0]) + str(tmp_list[2]) +'-'+str(tmp_list[3])
+        tmp_list[2] = float(tmp_list[2])/tmp_list[3]
+        tmp_list.pop(3)
+        item = tuple(tmp_list)
+        tmp_list[3] = tmp_list[3] - tmp_list[4]#rating - avg
+        tmp_list.pop(4)
+        processed.append(tmp_list)
+    return (processed, headers)
 
 
 def showProgress(current, max, msg):
