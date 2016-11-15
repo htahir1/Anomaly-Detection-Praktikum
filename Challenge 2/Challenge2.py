@@ -45,6 +45,7 @@ def reset_data():
     last_col_index = X_train.shape[1] - 1
     y_train = X_train[:, last_col_index]  # Last column in labels
     X_train = np.delete(X_train, -1, 1)  # delete last column of xtrain
+    X_train = (X_train - X_train.min(0)) / X_train.ptp(0)
 
     X_test = import_data(False)
 
@@ -58,7 +59,11 @@ def writeExtendedFeatures(header, data, filename):
 
         for row in data:
             for i in range(0,len(row)-1):
-                file.write(str(row[i])+",")
+                print type(row[i])
+                if type(row[i]) is unicode:
+                    file.write(row[i].encode('utf-8') + ",")
+                else:
+                    file.write(str(row[i])+",")
             file.write("%s\n" % str(row[len(row)-1]))
 
 
@@ -87,8 +92,8 @@ def import_data(train_mode):
             else:
                 if 'None' not in row:
                     row.pop(0)  # Get rid of the ID
-                    dataline = [w.replace('N', '0') for w in row]  # Convert NaN to -1
-                    dataline = [w.replace('Y', '1') for w in dataline]  # Convert NaN to -1
+                    dataline = [w.replace('N', '0') for w in row]
+                    dataline = [w.replace('Y', '1') for w in dataline]
                     dataline = map(float, dataline)
                     data.append(dataline)
 
@@ -153,8 +158,8 @@ def main():
     global y_train
     global y_test
 
-    reset_database = False
-    reset_parameters = False
+    reset_database = True
+    reset_parameters = True
 
     if reset_database:
         dbSetup.setupDatabase()
@@ -163,13 +168,13 @@ def main():
         dbSetup.initSQLConnection()
         data, header = dbSetup.getFeaturesByReview(True)
         writeExtendedFeatures(header, data, get_file_name(True))
-        print (header)
+        # print (header)
         data, header = dbSetup.getFeaturesByReview(False)
         writeExtendedFeatures(header, data, get_file_name(False))
 
     reset_data()
 
-    num_splits = 5
+    num_splits = 3
 
     kfold = KFold(n_splits=num_splits)
 
