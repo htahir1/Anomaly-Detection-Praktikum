@@ -217,6 +217,7 @@ def getFeaturesByReview(train_mode):
     query = query + " LEFT JOIN ( SELECT reviewerID,hotelID, AVG(rating) as avgRatingByHotel FROM "+table+" GROUP BY hotelID) as rt3 ON rt.hotelID = rt3.hotelID "
     query = query + " LEFT JOIN ( SELECT rt1.reviewID, rt1.date, rt4.maximumNumReviewsPerDay FROM "+table+" rt1 INNER JOIN (SELECT rev_t.reviewID, rev_t.reviewerID, date, COUNT (DISTINCT reviewID) as 'maximumNumReviewsPerDay' FROM "
     query = query +table +" rev_t GROUP BY rev_t.reviewerID, date) as rt4 ON rt1.date = rt4.date AND rt1.reviewerID = rt4.reviewerID ) as rt4 ON rt.reviewID = rt4.reviewID LEFT JOIN reviewer as rt5 ON rt5.reviewerID = rt.reviewerID"
+    print query
     dbi.getCursor().execute(query)
     headers = list()
     headers.append(table_reviews_test_reviewID)
@@ -240,6 +241,126 @@ def getFeaturesByReview(train_mode):
     #         processed.append(tmp_list)
     return (ret, headers)
 
+def getFeatureReviewers(train_mode):
+    if train_mode:
+        table = table_reviews_train
+    else:
+        table = table_reviews_test
+
+    query = "SELECT IFNULL(a.reviewID,'Outlier') as reviewID, a.reviewerID as reviewerID, b.funnyCount funnyCount, b.reviewCount reviewCount, b.firstCount firstCount, b.usefulCount usefulCount, b.coolCount coolCount, b.complimentCount complimentCount, b.fanCount fanCount, b.tipCount tipCount";
+    if train_mode:
+        query = query + " ,fake ";
+    query = query + " FROM ((SELECT reviewID, reviewerID ";
+
+    if train_mode:
+        query = query + " ,(CASE WHEN fake = 'N' THEN 0 WHEN fake = 'Y' THEN 1 ELSE fake END) as fake ";
+
+    query = query + " FROM "+table+" ) a LEFT JOIN (SELECT rt.reviewerID,rt.funnyCount, rt.reviewCount, rt.firstCount, rt.usefulCount, rt.coolCount, rt.complimentCount, rt.fanCount, rt.tipCount FROM reviewer rt WHERE reviewerID IN ";
+    query = query + "(SELECT reviewerID FROM "+table+")) b ON a.reviewerID = b.reviewerID ) ORDER BY reviewID;";
+
+    print query;
+    headers = list()
+    dbi.getCursor().execute(query)
+    columns = dbi.getCursor().description
+    for column in columns:
+        headers.append(column[0])
+
+    ret = dbi.getCursor().fetchall()
+    return (ret, headers)
+
+def getFeatureReviewLength(train_mode):
+    if train_mode:
+        table = table_reviews_train
+    else:
+        table = table_reviews_test
+
+    query = "SELECT IFNULL(reviewID,'Outlier') as reviewID, (LENGTH(rt.reviewContent)- LENGTH(REPLACE(reviewContent, ' ', ''))) reviewLength"
+
+
+
+    if train_mode:
+        query = query + " ,fake ";
+
+    query = query + " FROM "+table+" as rt ORDER BY reviewID;";
+
+    print query;
+    headers = list()
+    dbi.getCursor().execute(query)
+    columns = dbi.getCursor().description
+    for column in columns:
+        headers.append(column[0])
+
+    ret = dbi.getCursor().fetchall()
+    return (ret, headers)
+
+def getFeaturePercentPositiveReviews(train_mode):
+    if train_mode:
+        table = table_reviews_train
+    else:
+        table = table_reviews_test
+
+    query = "SELECT IFNULL(reviewID,'Outlier') as reviewID ,(b.ratingAbv3/(b.allCount + 0.0)) as PercentPositiveReviews, b.allcount as TotalReviewsByThisReviewer ";
+    if train_mode:
+        query = query + " ,fake ";
+    query = query + " FROM ((SELECT reviewID, reviewerID"
+    if train_mode:
+        query = query + " ,fake ";
+    query = query + " FROM "+table+ ") a LEFT JOIN (SELECT reviewerID, COUNT(CASE WHEN rating >3 THEN 1 ELSE NULL END) as ratingAbv3, COUNT(*) as allCount FROM "+table+" GROUP BY reviewerID) b ON a.reviewerID = b.reviewerID) ORDER BY reviewID;";
+
+    print query;
+    headers = list()
+    dbi.getCursor().execute(query)
+    columns = dbi.getCursor().description
+    for column in columns:
+        headers.append(column[0])
+
+    ret = dbi.getCursor().fetchall()
+    return (ret, headers)
+
+def getFeatureAvgRatingByHotel(train_mode):
+    if train_mode:
+        table = table_reviews_train
+    else:
+        table = table_reviews_test
+
+    query = "SELECT IFNULL(reviewID,'Outlier') as reviewID ,b.* ";
+    if train_mode:
+        query = query + " ,fake ";
+    query = query + " FROM ((SELECT reviewID, hotelID ";
+    if train_mode:
+        query = query + " ,fake ";
+    query = query + " FROM "+table+") a LEFT JOIN (SELECT reviewerID,hotelID, AVG(rating) as avgRatingByHotel FROM "+table +" GROUP BY hotelID) b ON a.hotelID = b.hotelID) ORDER BY reviewID;";
+
+    print query;
+    headers = list()
+    dbi.getCursor().execute(query)
+    columns = dbi.getCursor().description
+    for column in columns:
+        headers.append(column[0])
+
+    ret = dbi.getCursor().fetchall()
+    return (ret, headers)
+
+def getFeatureReviewsPerDay(train_mode):
+    if train_mode:
+        table = table_reviews_train
+    else:
+        table = table_reviews_test
+
+    query = "SELECT IFNULL(a.reviewID,'Outlier') as reviewID ,b.maximumNumReviewsPerDay as MaximumNumReviewsPerDay ";
+    if train_mode:
+        query = query + " ,fake ";
+    query = query + " FROM ((SELECT * FROM "+table+") a LEFT JOIN (SELECT rev_t.reviewerID, date, COUNT (DISTINCT IFNULL(reviewID,1)) as 'maximumNumReviewsPerDay' FROM "+table+" rev_t GROUP BY rev_t.reviewerID, date) b ON a.reviewerID = b.reviewerID AND a.date =b.date) ORDER BY reviewID;";
+
+    print query;
+    headers = list()
+    dbi.getCursor().execute(query)
+    columns = dbi.getCursor().description
+    for column in columns:
+        headers.append(column[0])
+
+    ret = dbi.getCursor().fetchall()
+    return (ret, headers)
 
 def showProgress(current, max, msg):
     sys.stdout.write('' + str(current) + '/' + str(max) +  ' ' + msg + '\r')
