@@ -374,27 +374,48 @@ def getFeatureReviewsPerDay(train_mode):
     return (ret, headers)
 
 
-def concatenateFeatures(a1, a2):
-    pass
+def getFeatureReviewsCounts(train_mode):
+    if train_mode:
+        table = table_reviews_train
+    else:
+        table = table_reviews_test
+
+    query = "SELECT IFNULL(reviewID,'Outlier') as reviewID, usefulCount, coolCount, funnyCount "
+    if train_mode:
+        query = query + " ,(CASE WHEN fake = 'N' THEN 0 WHEN fake = 'Y' THEN 1 ELSE fake END) as fake "
+
+    query = query + " FROM "+table
+
+    headers = list()
+    dbi.getCursor().execute(query)
+    columns = dbi.getCursor().description
+    for column in columns:
+        headers.append(column[0])
+
+    ret = dbi.getCursor().fetchall()
+    return (ret, headers)
 
 
 def getFeatures(train_mode):
     if train_mode:
-        reviewer_data = np.array([list(elem)[1:] for elem in (getFeatureReviewers(train_mode)[0])], dtype=np.float)
+        reviewer_data = np.delete(np.array([list(elem)[1:] for elem in (getFeatureReviewers(train_mode)[0])], dtype=np.float), -1, 1)
+        review_data = np.array([list(elem)[1:] for elem in (getFeatureReviewsCounts(train_mode)[0])], dtype=np.float)
         # reviewer_length_data = np.delete(np.array([list(elem)[1:] for elem in (getFeatureReviewLength(train_mode)[0])], dtype=np.float), -1, 1)
         # reviewer_percent_positive_reviews_data = np.delete(np.array([list(elem)[1:] for elem in (getFeaturePercentPositiveReviews(train_mode)[0])], dtype=np.float), -1, 1)
         # reviewer_average_rating_data = np.delete(np.array([list(elem)[2:] for elem in (getFeatureAvgRatingByHotel(train_mode)[0])], dtype=np.float), -1, 1)
         # reviewer_reviews_day_data = np.array([list(elem)[1:] for elem in (getFeatureReviewsPerDay(train_mode)[0])], dtype=np.float)
     else:
         reviewer_data = np.array([list(elem)[1:] for elem in (getFeatureReviewers(train_mode)[0])], dtype=np.float)
+        review_data = np.array([list(elem)[1:] for elem in (getFeatureReviewsCounts(train_mode)[0])], dtype=np.float)
+
         # reviewer_length_data = np.array([list(elem)[1:] for elem in (getFeatureReviewLength(train_mode)[0])], dtype=np.float)
         # reviewer_percent_positive_reviews_data = np.array([list(elem)[1:] for elem in (getFeaturePercentPositiveReviews(train_mode)[0])], dtype=np.float)
         # reviewer_average_rating_data = np.array([list(elem)[2:] for elem in (getFeatureAvgRatingByHotel(train_mode)[0])], dtype=np.float)
         # reviewer_reviews_day_data = np.array([list(elem)[1:] for elem in (getFeatureReviewsPerDay(train_mode)[0])], dtype=np.float)
 
-    # data = np.concatenate((reviewer_data, reviewer_length_data, reviewer_percent_positive_reviews_data, reviewer_average_rating_data, reviewer_reviews_day_data), axis=1)
+    data = np.concatenate((reviewer_data, review_data), axis=1)
 
-    return reviewer_data
+    return data
 
 def showProgress(current, max, msg):
     sys.stdout.write('' + str(current) + '/' + str(max) +  ' ' + msg + '\r')

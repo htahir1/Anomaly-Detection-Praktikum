@@ -57,6 +57,7 @@ def undersample(data):
 
     return np.array(new_data)
 
+
 def reset_data():
     global X_train
     global y_train
@@ -72,11 +73,11 @@ def reset_data():
     y_train = X_train[:, last_col_index]  # Last column in labels
     X_train = np.delete(X_train, -1, 1)  # delete last column of xtrain
     X_train = np.nan_to_num(X_train)
-    X_train = (X_train - X_train.min(0)) / X_train.ptp(0)
+    # X_train = (X_train - X_train.min(0)) / X_train.ptp(0)
 
     X_test = import_data(False)
     X_test = np.nan_to_num(X_test)
-    X_test = (X_test - X_test.min(0)) / X_test.ptp(0)
+    # X_test = (X_test - X_test.min(0)) / X_test.ptp(0)
 
 
 def writeExtendedFeatures(train_mode):
@@ -92,6 +93,7 @@ def writeExtendedFeaturesTrainTemp(data):
     #    np.savetxt(filename, data, delimiter=",")
     with open(filename, 'wb') as f:
         csv.writer(f).writerows(data)
+
 
 def get_file_name(train_mode):
     if train_mode:
@@ -209,7 +211,7 @@ def main():
         # "Kernel Density Estimation": kernel_density,
         #"One Class SVM": one_class_svm,
         # "Local Outlier Factor": local_outlier_factor,
-        # "Support Vector Classifier": svm.SVC(),
+        "Support Vector Classifier": svm.SVC(),
         #"Multi Layer Perceptron": multi_layer_perceptron,
         "Naive Bayes": GaussianNB(),
         #"Decision Tree": decision_tree,
