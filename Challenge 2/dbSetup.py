@@ -74,6 +74,9 @@ table_reviews_train_hotelID = 'hotelID'
 table_ids = {table_hotel, table_reviewer, table_reviews_train, table_reviews_test}
 
 
+def closeSQLConnection():
+    dbi.close()
+
 def setupTables(dbcursor):
 
     # Table 1
@@ -203,6 +206,7 @@ def getHotelIds():
     dbi.getCursor().execute(query)
     return dbi.getCursor().fetchall()
 
+
 def getFeaturesByReview(train_mode):
     if train_mode:
         table = table_reviews_train
@@ -241,24 +245,24 @@ def getFeaturesByReview(train_mode):
     #         processed.append(tmp_list)
     return (ret, headers)
 
+
 def getFeatureReviewers(train_mode):
     if train_mode:
         table = table_reviews_train
     else:
         table = table_reviews_test
 
-    query = "SELECT IFNULL(a.reviewID,'Outlier') as reviewID, a.reviewerID as reviewerID, b.funnyCount funnyCount, b.reviewCount reviewCount, b.firstCount firstCount, b.usefulCount usefulCount, b.coolCount coolCount, b.complimentCount complimentCount, b.fanCount fanCount, b.tipCount tipCount";
+    query = "SELECT IFNULL(a.reviewID,'Outlier') as reviewID, b.funnyCount funnyCount, b.reviewCount reviewCount, b.firstCount firstCount, b.usefulCount usefulCount, b.coolCount coolCount, b.complimentCount complimentCount, b.fanCount fanCount, b.tipCount tipCount"
     if train_mode:
-        query = query + " ,fake ";
-    query = query + " FROM ((SELECT reviewID, reviewerID ";
+        query = query + " ,fake "
+    query = query + " FROM ((SELECT reviewID, reviewerID "
 
     if train_mode:
-        query = query + " ,(CASE WHEN fake = 'N' THEN 0 WHEN fake = 'Y' THEN 1 ELSE fake END) as fake ";
+        query = query + " ,(CASE WHEN fake = 'N' THEN 0 WHEN fake = 'Y' THEN 1 ELSE fake END) as fake "
 
-    query = query + " FROM "+table+" ) a LEFT JOIN (SELECT rt.reviewerID,rt.funnyCount, rt.reviewCount, rt.firstCount, rt.usefulCount, rt.coolCount, rt.complimentCount, rt.fanCount, rt.tipCount FROM reviewer rt WHERE reviewerID IN ";
-    query = query + "(SELECT reviewerID FROM "+table+")) b ON a.reviewerID = b.reviewerID ) ORDER BY reviewID;";
+    query = query + " FROM "+table+" ) a LEFT JOIN (SELECT rt.reviewerID,rt.funnyCount, rt.reviewCount, rt.firstCount, rt.usefulCount, rt.coolCount, rt.complimentCount, rt.fanCount, rt.tipCount FROM reviewer rt WHERE reviewerID IN "
+    query = query + "(SELECT reviewerID FROM "+table+")) b ON a.reviewerID = b.reviewerID ) ;"
 
-    print query;
     headers = list()
     dbi.getCursor().execute(query)
     columns = dbi.getCursor().description
@@ -267,6 +271,7 @@ def getFeatureReviewers(train_mode):
 
     ret = dbi.getCursor().fetchall()
     return (ret, headers)
+
 
 def getFeatureReviewLength(train_mode):
     if train_mode:
@@ -279,11 +284,10 @@ def getFeatureReviewLength(train_mode):
 
 
     if train_mode:
-        query = query + " ,fake ";
+        query = query + " ,(CASE WHEN fake = 'N' THEN 0 WHEN fake = 'Y' THEN 1 ELSE fake END) as fake "
 
-    query = query + " FROM "+table+" as rt ORDER BY reviewID;";
+    query = query + " FROM "+table+" as rt ;"
 
-    print query;
     headers = list()
     dbi.getCursor().execute(query)
     columns = dbi.getCursor().description
@@ -292,6 +296,7 @@ def getFeatureReviewLength(train_mode):
 
     ret = dbi.getCursor().fetchall()
     return (ret, headers)
+
 
 def getFeaturePercentPositiveReviews(train_mode):
     if train_mode:
@@ -299,15 +304,17 @@ def getFeaturePercentPositiveReviews(train_mode):
     else:
         table = table_reviews_test
 
-    query = "SELECT IFNULL(reviewID,'Outlier') as reviewID ,(b.ratingAbv3/(b.allCount + 0.0)) as PercentPositiveReviews, b.allcount as TotalReviewsByThisReviewer ";
+    query = "SELECT IFNULL(reviewID,'Outlier') as reviewID ,(b.ratingAbv3/(b.allCount + 0.0)) as PercentPositiveReviews, b.allcount as TotalReviewsByThisReviewer "
     if train_mode:
-        query = query + " ,fake ";
-    query = query + " FROM ((SELECT reviewID, reviewerID"
-    if train_mode:
-        query = query + " ,fake ";
-    query = query + " FROM "+table+ ") a LEFT JOIN (SELECT reviewerID, COUNT(CASE WHEN rating >3 THEN 1 ELSE NULL END) as ratingAbv3, COUNT(*) as allCount FROM "+table+" GROUP BY reviewerID) b ON a.reviewerID = b.reviewerID) ORDER BY reviewID;";
+        query = query + " ,(CASE WHEN fake = 'N' THEN 0 WHEN fake = 'Y' THEN 1 ELSE fake END) as fake "
 
-    print query;
+    query = query + " FROM ((SELECT reviewID, reviewerID"
+
+    if train_mode:
+        query = query + " ,(CASE WHEN fake = 'N' THEN 0 WHEN fake = 'Y' THEN 1 ELSE fake END) as fake "
+
+    query = query + " FROM "+table+ ") a LEFT JOIN (SELECT reviewerID, COUNT(CASE WHEN rating >3 THEN 1 ELSE NULL END) as ratingAbv3, COUNT(*) as allCount FROM "+table+" GROUP BY reviewerID) b ON a.reviewerID = b.reviewerID) ;"
+
     headers = list()
     dbi.getCursor().execute(query)
     columns = dbi.getCursor().description
@@ -316,6 +323,7 @@ def getFeaturePercentPositiveReviews(train_mode):
 
     ret = dbi.getCursor().fetchall()
     return (ret, headers)
+
 
 def getFeatureAvgRatingByHotel(train_mode):
     if train_mode:
@@ -323,15 +331,17 @@ def getFeatureAvgRatingByHotel(train_mode):
     else:
         table = table_reviews_test
 
-    query = "SELECT IFNULL(reviewID,'Outlier') as reviewID ,b.* ";
+    query = "SELECT IFNULL(reviewID,'Outlier') as reviewID ,b.* "
     if train_mode:
-        query = query + " ,fake ";
-    query = query + " FROM ((SELECT reviewID, hotelID ";
-    if train_mode:
-        query = query + " ,fake ";
-    query = query + " FROM "+table+") a LEFT JOIN (SELECT reviewerID,hotelID, AVG(rating) as avgRatingByHotel FROM "+table +" GROUP BY hotelID) b ON a.hotelID = b.hotelID) ORDER BY reviewID;";
+        query = query + " ,(CASE WHEN fake = 'N' THEN 0 WHEN fake = 'Y' THEN 1 ELSE fake END) as fake "
 
-    print query;
+    query = query + " FROM ((SELECT reviewID, hotelID "
+
+    if train_mode:
+        query = query + " ,(CASE WHEN fake = 'N' THEN 0 WHEN fake = 'Y' THEN 1 ELSE fake END) as fake "
+
+    query = query + " FROM "+table+") a LEFT JOIN (SELECT hotelID, AVG(rating) as avgRatingByHotel FROM "+table +" GROUP BY hotelID) b ON a.hotelID = b.hotelID) ;"
+
     headers = list()
     dbi.getCursor().execute(query)
     columns = dbi.getCursor().description
@@ -340,6 +350,7 @@ def getFeatureAvgRatingByHotel(train_mode):
 
     ret = dbi.getCursor().fetchall()
     return (ret, headers)
+
 
 def getFeatureReviewsPerDay(train_mode):
     if train_mode:
@@ -349,10 +360,10 @@ def getFeatureReviewsPerDay(train_mode):
 
     query = "SELECT IFNULL(a.reviewID,'Outlier') as reviewID ,b.maximumNumReviewsPerDay as MaximumNumReviewsPerDay ";
     if train_mode:
-        query = query + " ,fake ";
-    query = query + " FROM ((SELECT * FROM "+table+") a LEFT JOIN (SELECT rev_t.reviewerID, date, COUNT (DISTINCT IFNULL(reviewID,1)) as 'maximumNumReviewsPerDay' FROM "+table+" rev_t GROUP BY rev_t.reviewerID, date) b ON a.reviewerID = b.reviewerID AND a.date =b.date) ORDER BY reviewID;";
+        query = query + " ,(CASE WHEN fake = 'N' THEN 0 WHEN fake = 'Y' THEN 1 ELSE fake END) as fake "
 
-    print query;
+    query = query + " FROM ((SELECT * FROM "+table+") a LEFT JOIN (SELECT rev_t.reviewerID, date, COUNT (DISTINCT IFNULL(reviewID,1)) as 'maximumNumReviewsPerDay' FROM "+table+" rev_t GROUP BY rev_t.reviewerID, date) b ON a.reviewerID = b.reviewerID AND a.date =b.date) ;"
+
     headers = list()
     dbi.getCursor().execute(query)
     columns = dbi.getCursor().description
@@ -361,6 +372,29 @@ def getFeatureReviewsPerDay(train_mode):
 
     ret = dbi.getCursor().fetchall()
     return (ret, headers)
+
+
+def concatenateFeatures(a1, a2):
+    pass
+
+
+def getFeatures(train_mode):
+    if train_mode:
+        reviewer_data = np.array([list(elem)[1:] for elem in (getFeatureReviewers(train_mode)[0])], dtype=np.float)
+        # reviewer_length_data = np.delete(np.array([list(elem)[1:] for elem in (getFeatureReviewLength(train_mode)[0])], dtype=np.float), -1, 1)
+        # reviewer_percent_positive_reviews_data = np.delete(np.array([list(elem)[1:] for elem in (getFeaturePercentPositiveReviews(train_mode)[0])], dtype=np.float), -1, 1)
+        # reviewer_average_rating_data = np.delete(np.array([list(elem)[2:] for elem in (getFeatureAvgRatingByHotel(train_mode)[0])], dtype=np.float), -1, 1)
+        # reviewer_reviews_day_data = np.array([list(elem)[1:] for elem in (getFeatureReviewsPerDay(train_mode)[0])], dtype=np.float)
+    else:
+        reviewer_data = np.array([list(elem)[1:] for elem in (getFeatureReviewers(train_mode)[0])], dtype=np.float)
+        # reviewer_length_data = np.array([list(elem)[1:] for elem in (getFeatureReviewLength(train_mode)[0])], dtype=np.float)
+        # reviewer_percent_positive_reviews_data = np.array([list(elem)[1:] for elem in (getFeaturePercentPositiveReviews(train_mode)[0])], dtype=np.float)
+        # reviewer_average_rating_data = np.array([list(elem)[2:] for elem in (getFeatureAvgRatingByHotel(train_mode)[0])], dtype=np.float)
+        # reviewer_reviews_day_data = np.array([list(elem)[1:] for elem in (getFeatureReviewsPerDay(train_mode)[0])], dtype=np.float)
+
+    # data = np.concatenate((reviewer_data, reviewer_length_data, reviewer_percent_positive_reviews_data, reviewer_average_rating_data, reviewer_reviews_day_data), axis=1)
+
+    return reviewer_data
 
 def showProgress(current, max, msg):
     sys.stdout.write('' + str(current) + '/' + str(max) +  ' ' + msg + '\r')

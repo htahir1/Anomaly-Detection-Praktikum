@@ -1,15 +1,16 @@
 from __future__ import division
 
 import numpy as np
+import math
 from sklearn.model_selection import KFold
 import pandas as pd
 import time
 import csv
 import os
+import random
 import re
 from stemming.porter import stem
 import sys
-import math
 import string
 import dbSetup
 from sklearn.ensemble import RandomForestClassifier
@@ -35,37 +36,62 @@ y_test = []
 '''
     Helper functions
 '''
+def undersample(data):
+    new_data = []
+    check_dict = {}
+
+    for i in range(0, np.shape(data)[0]):
+        if data[i][np.shape(data)[1] - 1] == 1.0:
+            new_data.append(data[i].tolist())
+
+    break_while = True
+    while(break_while):
+        random_row_index = random.randint(0, np.shape(data)[0]-1)
+        if random_row_index not in check_dict:
+            if data[random_row_index][np.shape(data)[1] - 1] == 0.0:
+                new_data.append(data[random_row_index])
+                check_dict[random_row_index] = 1
+
+                if len(check_dict) == 377:
+                    break_while = False
+
+    return np.array(new_data)
+
 def reset_data():
     global X_train
     global y_train
     global X_test
 
     X_train = import_data(True)
+    X_train = undersample(X_train)
+
     np.random.shuffle(X_train)
+    writeExtendedFeaturesTrainTemp(X_train)
+
     last_col_index = X_train.shape[1] - 1
     y_train = X_train[:, last_col_index]  # Last column in labels
     X_train = np.delete(X_train, -1, 1)  # delete last column of xtrain
+    X_train = np.nan_to_num(X_train)
     X_train = (X_train - X_train.min(0)) / X_train.ptp(0)
 
     X_test = import_data(False)
+    X_test = np.nan_to_num(X_test)
+    X_test = (X_test - X_test.min(0)) / X_test.ptp(0)
 
 
-def writeExtendedFeatures(header, data, filename):
-    with open(filename, 'w') as file:
-        for i in range(0,len(header)-1):
-            file.write(str(header[i]))
-            file.write(",")
-        file.write(str(header[len(header)-1])+"\n")
+def writeExtendedFeatures(train_mode):
+    filename = get_file_name(train_mode)
+    data = dbSetup.getFeatures(train_mode)
+#    np.savetxt(filename, data, delimiter=",")
+    with open(filename, 'wb') as f:
+        csv.writer(f).writerows(data)
 
-        for row in data:
-            for i in range(0,len(row)-1):
-                print type(row[i])
-                if type(row[i]) is unicode:
-                    file.write(row[i].encode('utf-8') + ",")
-                else:
-                    file.write(str(row[i])+",")
-            file.write("%s\n" % str(row[len(row)-1]))
 
+def writeExtendedFeaturesTrainTemp(data):
+    filename = get_file_name(True)
+    #    np.savetxt(filename, data, delimiter=",")
+    with open(filename, 'wb') as f:
+        csv.writer(f).writerows(data)
 
 def get_file_name(train_mode):
     if train_mode:
@@ -82,22 +108,24 @@ def import_data(train_mode):
     data = []
     count = 0
 
-    filename = get_file_name(train_mode)
+    # filename = get_file_name(train_mode)
+    #
+    # with open(filename, 'rb') as f:
+    #     reader = csv.reader(f)
+    #     for row in reader:
+    #         if count == 0:
+    #             count += 1
+    #         else:
+    #             if 'None' not in row:
+    #                 row.pop(0)  # Get rid of the ID
+    #                 dataline = [w.replace('N', '0') for w in row]
+    #                 dataline = [w.replace('Y', '1') for w in dataline]
+    #                 dataline = map(float, dataline)
+    #                 data.append(dataline)
+    #
+    # return np.array(data)
 
-    with open(filename, 'rb') as f:
-        reader = csv.reader(f)
-        for row in reader:
-            if count == 0:
-                count += 1
-            else:
-                if 'None' not in row:
-                    row.pop(0)  # Get rid of the ID
-                    dataline = [w.replace('N', '0') for w in row]
-                    dataline = [w.replace('Y', '1') for w in dataline]
-                    dataline = map(float, dataline)
-                    data.append(dataline)
-
-    return np.array(data)
+    return dbSetup.getFeatures(train_mode)
 
 
 # Parses stop word list and returns an array of stop words
@@ -158,19 +186,17 @@ def main():
     global y_train
     global y_test
 
-    reset_database = True
-    reset_parameters = True
+    reset_database = False
+    reset_parameters = False
 
     if reset_database:
         dbSetup.setupDatabase()
 
+    dbSetup.initSQLConnection()
+
     if reset_parameters:
-        dbSetup.initSQLConnection()
-        data, header = dbSetup.getFeaturesByReview(True)
-        writeExtendedFeatures(header, data, get_file_name(True))
-        # print (header)
-        data, header = dbSetup.getFeaturesByReview(False)
-        writeExtendedFeatures(header, data, get_file_name(False))
+        writeExtendedFeatures(True)
+        writeExtendedFeatures(False)
 
     reset_data()
 
@@ -183,7 +209,7 @@ def main():
         # "Kernel Density Estimation": kernel_density,
         #"One Class SVM": one_class_svm,
         # "Local Outlier Factor": local_outlier_factor,
-        "Support Vector Classifier": svm.SVC(),
+        # "Support Vector Classifier": svm.SVC(),
         #"Multi Layer Perceptron": multi_layer_perceptron,
         "Naive Bayes": GaussianNB(),
         #"Decision Tree": decision_tree,
@@ -216,6 +242,8 @@ def main():
     for name, classifier in classifiers.items():
         y_test = execute_classifier(False, classifier)
         write_to_file(name + '_output.csv.dat', y_test)
+
+    dbSetup.closeSQLConnection()
 
 
 if __name__ == "__main__":
