@@ -208,14 +208,9 @@ def main():
 
     # Define "classifiers" to be used
     classifiers = {
-        # "Kernel Density Estimation": kernel_density,
-        #"One Class SVM": one_class_svm,
-        # "Local Outlier Factor": local_outlier_factor,
         "Support Vector Classifier": svm.SVC(),
-        #"Multi Layer Perceptron": multi_layer_perceptron,
+        # "Multi Layer Perceptron": multi_layer_perceptron,
         "Naive Bayes": GaussianNB(),
-        #"Decision Tree": decision_tree,
-        # "KNN Regressor": knn_regressor,
         "Random Forest": RandomForestClassifier(criterion="entropy", n_estimators=40)
         # "K Means": k_means
     }
