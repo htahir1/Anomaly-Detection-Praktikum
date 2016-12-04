@@ -20,60 +20,12 @@ table_training = 'training'
 table_testing = 'testing'
 table_features = 'features'
 
+datatype_nominal = 'TEXT'
+datatype_integer = 'INTEGER'
+datatype_float = 'REAL'
+datatype_binary = 'NUMERIC'
+datatype_timestamp = 'NUMERIC'
 
-table_hotel = 'hotel'
-table_hotel_hotelID = 'hotelID'
-table_hotel_location = 'location'
-table_hotel_reviewCount = 'reviewCount'
-table_hotel_rating = 'rating'
-table_hotel_categories = 'categories'
-table_hotel_address = 'address'
-table_hotel_AcceptsCreditCards = 'AcceptsCreditCards'
-table_hotel_PriceRange = 'PriceRange'
-table_hotel_WiFi = 'WiFi'
-table_hotel_webSite = 'webSite'
-table_hotel_phoneNumber = 'phoneNumber'
-table_hotel_filReviewCount = 'filReviewCount'
-
-table_reviewer = 'reviewer'
-table_reviewer_reviewerID = 'reviewerID'
-table_reviewer_name = 'name'
-table_reviewer_location = 'location'
-table_reviewer_yelpJoinDate = 'yelpJoinDate'
-table_reviewer_friendCount = 'friendCount'
-table_reviewer_reviewCount = 'reviewCount'
-table_reviewer_firstCount = 'firstCount'
-table_reviewer_usefulCount = 'usefulCount'
-table_reviewer_coolCount = 'coolCount'
-table_reviewer_funnyCount = 'funnyCount'
-table_reviewer_complimentCount = 'complimentCount'
-table_reviewer_tipCount = 'tipCount'
-table_reviewer_fanCount = 'fanCount'
-
-table_reviews_test = 'reviews_test'
-table_reviews_test_id = 'id'
-table_reviews_test_date = 'date'
-table_reviews_test_reviewID = 'reviewID'
-table_reviews_test_reviewerID = 'reviewerID'
-table_reviews_test_reviewContent = 'reviewContent'
-table_reviews_test_rating = 'rating'
-table_reviews_test_usefulCount = 'usefulCount'
-table_reviews_test_coolCount = 'coolCount'
-table_reviews_test_funnyCount = 'funnyCount'
-table_reviews_test_hotelID = 'hotelID'
-
-
-table_reviews_train = 'reviews_train'
-table_reviews_train_date = 'date'
-table_reviews_train_reviewID = 'reviewID'
-table_reviews_train_reviewerID = 'reviewerID'
-table_reviews_train_reviewContent = 'reviewContent'
-table_reviews_train_rating = 'rating'
-table_reviews_train_usefulCount = 'usefulCount'
-table_reviews_train_coolCount = 'coolCount'
-table_reviews_train_funnyCount = 'funnyCount'
-table_reviews_train_fake = 'fake'
-table_reviews_train_hotelID = 'hotelID'
 
 table_ids = {table_training, table_testing, table_features}
 
@@ -82,91 +34,65 @@ def closeSQLConnection():
     dbi.close()
 
 
-def setupTables(dbcursor):
+def dataTypeReplacement(csv_val):
+    return{
+        'nominal': datatype_nominal,
+        'integer': datatype_integer,
+        'Integer': datatype_integer,
+        'Float': datatype_float,
+        'Binary': datatype_binary,
+        'binary': datatype_binary,
+        'Timestamp': datatype_timestamp
+    }[csv_val]
+
+def getTableColumns(feature_data):
+    table_columns = []
+    table_column_data_type = []
+
+    for x in feature_data['Name']:
+        table_columns.append(x)
+
+    for x in feature_data['Type ']:
+        table_column_data_type.append(dataTypeReplacement(x))
+
+    query = ''
+    i = 0
+    for x in table_columns:
+        query += x + ' ' + table_column_data_type[i] + ', '
+        i += 1
+    query = (query[:-2]+' ')
+    return query
+
+
+def setupTables(dbcursor, table_columns):
 
     # Table 1
-    queryA = ('CREATE TABLE IF NOT EXISTS ' + table_hotel + '('
-              '' + table_hotel_hotelID + ' TEXT PRIMARY KEY, '
-              '' + table_hotel_location + ' TEXT, '
-              '' + table_hotel_reviewCount + ' REAL, '
-              '' + table_hotel_rating + ' TEXT, '
-              '' + table_hotel_categories + ' TEXT, '
-              '' + table_hotel_address + ' TEXT, '
-              '' + table_hotel_AcceptsCreditCards + ' TEXT, '
-              '' + table_hotel_PriceRange + ' TEXT, '
-              '' + table_hotel_WiFi + ' TEXT, '
-              '' + table_hotel_webSite + ' TEXT, '
-              '' + table_hotel_phoneNumber + ' TEXT, '
-              '' + table_hotel_filReviewCount + ' INTEGER '
+    queryA = ('CREATE TABLE IF NOT EXISTS ' + table_training + '('
+               ''+table_columns
               + ');')
 
-    # Table 2
-    queryB = ('CREATE TABLE IF NOT EXISTS ' + table_reviewer + '('
-              '' + table_reviewer_reviewerID + ' TEXT PRIMARY KEY, '
-              '' + table_reviewer_name + ' TEXT, '
-              '' + table_reviewer_location + ' TEXT, '
-              '' + table_reviewer_yelpJoinDate + ' TEXT, '
-              '' + table_reviewer_friendCount + ' INTEGER, '
-              '' + table_reviewer_reviewCount + ' INTEGER, '
-              '' + table_reviewer_firstCount + ' INTEGER, '
-              '' + table_reviewer_usefulCount + ' INTEGER, '
-              '' + table_reviewer_coolCount + ' INTEGER, '
-              '' + table_reviewer_funnyCount + ' INTEGER, '
-              '' + table_reviewer_complimentCount + ' INTEGER, '
-              '' + table_reviewer_tipCount + ' INTEGER, '
-              '' + table_reviewer_fanCount + ' INTEGER '
+     # Table 2
+    queryB = ('CREATE TABLE IF NOT EXISTS ' + table_testing + '('
+               ''+table_columns
               + ');')
 
-    # Table 3
-    queryC = ('CREATE TABLE IF NOT EXISTS ' + table_reviews_test + '('
-              '' + table_reviews_test_id + ' INTEGER, '
-              '' + table_reviews_test_date + ' TEXT, '
-              '' + table_reviews_test_reviewID + ' TEXT PRIMARY KEY, '
-              '' + table_reviews_test_reviewerID + ' TEXT, '
-              '' + table_reviews_test_reviewContent + ' TEXT, '
-              '' + table_reviews_test_rating + ' REAL, '
-              '' + table_reviews_test_usefulCount + ' INTEGER, '
-              '' + table_reviews_test_coolCount + ' INTEGER, '
-              '' + table_reviews_test_funnyCount + ' INTEGER, '
-              '' + table_reviews_test_hotelID + ' TEXT, '
-              + 'FOREIGN KEY(' + table_reviews_test_reviewerID + ') REFERENCES ' + table_reviewer + '(' + table_reviewer_reviewerID + '), '
-              + 'FOREIGN KEY(' + table_reviews_test_hotelID + ') REFERENCES ' + table_hotel + '(' + table_hotel_hotelID + ') '
-              + ');')
-
-    # Table 4
-    queryD = ('CREATE TABLE IF NOT EXISTS ' + table_reviews_train + '('
-             '' + table_reviews_train_date + ' TEXT, '
-             '' + table_reviews_train_reviewID + ' TEXT PRIMARY KEY, '
-             '' + table_reviews_train_reviewerID + ' TEXT, '
-             '' + table_reviews_train_reviewContent + ' TEXT, '
-             '' + table_reviews_train_rating + ' REAL, '
-             '' + table_reviews_train_usefulCount + ' INTEGER, '
-             '' + table_reviews_train_coolCount + ' INTEGER, '
-             '' + table_reviews_train_funnyCount + ' INTEGER, '
-             '' + table_reviews_train_fake + ' INTEGER, '
-             '' + table_reviews_train_hotelID + ' TEXT, '
-             + 'FOREIGN KEY(' + table_reviews_train_reviewerID + ') REFERENCES ' + table_reviewer + '(' + table_reviewer_reviewerID + '), '
-             + 'FOREIGN KEY(' + table_reviews_train_hotelID + ') REFERENCES ' + table_hotel + '(' + table_hotel_hotelID + ') '
-             + ');')
-
-
-    
     # execute all queries
-    for query in [queryA, queryB, queryC, queryD]:
+    for query in [ queryA, queryB]:
         dbcursor.execute(query)
 
 
 def import_data():
     testing_data = pd.read_csv(data_testing, sep=',', error_bad_lines=False, encoding='utf-8')
-
+#
     training_data = pd.read_csv(data_training, sep=',', error_bad_lines=False, encoding='utf-8')
 
-    features_data = pd.read_csv(data_features, sep=',', error_bad_lines=False, encoding='utf-8')
+    features_data = pd.read_csv(data_features, sep=',', error_bad_lines=False)
 
 
     print list(testing_data.columns.values)
     print list(training_data.columns.values)
     print list(features_data.columns.values)
+
 
     return training_data, testing_data, features_data
 
@@ -186,15 +112,15 @@ def setupDatabase():
     if os.path.isfile(data_db):
         os.remove(data_db)
 
-    initSQLConnection()
-
-    # setupTables(dbi.getCursor())
-
     training_data, testing_data, feature_data = import_data()
 
+    table_columns = getTableColumns(feature_data)
+    initSQLConnection()
+
+    setupTables(dbi.getCursor(),table_columns)
     training_data.to_sql(table_training, dbi._conn, flavor='sqlite', if_exists='replace', index=False, chunksize=5)
     testing_data.to_sql(table_testing, dbi._conn, flavor='sqlite', if_exists='replace', index=False, chunksize=5)
-    feature_data.to_sql(table_features, dbi._conn, flavor='sqlite', if_exists='replace', index=False, chunksize=5)
+  #  feature_data.to_sql(table_features, dbi._conn, flavor='sqlite', if_exists='replace', index=False, chunksize=5)
 
     dbi.close()
 
