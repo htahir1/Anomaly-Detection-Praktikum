@@ -96,8 +96,8 @@ def import_data(train_mode):
 
 def write_predictions_to_file(filename, data):
     f = open(filename, 'w')
-    f.write('Id,Expected\n')
-    i = 0
+    f.write('id,label\n')
+    i = 1
     for item in data:
         f.write('%s' % i)
         f.write(',')
