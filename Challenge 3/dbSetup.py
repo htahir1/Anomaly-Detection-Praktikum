@@ -129,7 +129,7 @@ def setupDatabase():
 def getData(train_mode):
     if train_mode:
         table = table_training
-        query = "SELECT * FROM " + table + " WHERE label=1"
+        query = "SELECT * FROM " + table
     else:
         table = table_testing
         query = "SELECT * FROM " + table

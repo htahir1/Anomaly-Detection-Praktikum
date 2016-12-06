@@ -1,5 +1,6 @@
 from __future__ import division
 
+from sklearn import manifold
 import numpy as np
 import math
 from sklearn.model_selection import KFold
@@ -26,6 +27,7 @@ from sklearn.cluster import KMeans
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.preprocessing import normalize
 from sklearn.decomposition import PCA
+import matplotlib.pyplot as plt
 
 
 training_data = []
@@ -44,19 +46,23 @@ def undersample(data):
     new_data = []
     check_dict = {}
 
+    np.random.shuffle(data)
+
     for i in range(0, np.shape(data)[0]):
-        if data[i][np.shape(data)[1] - 1] == 1.0:
+        if data[i][np.shape(data)[1] - 1] == 1:
             new_data.append(data[i].tolist())
 
+    size_of_anomalies = len(new_data)
+    
     break_while = True
     while(break_while):
         random_row_index = random.randint(0, np.shape(data)[0]-1)
         if random_row_index not in check_dict:
-            if data[random_row_index][np.shape(data)[1] - 1] == 0.0:
+            if data[random_row_index][np.shape(data)[1] - 1] == 0:
                 new_data.append(data[random_row_index])
                 check_dict[random_row_index] = 1
 
-                if len(check_dict) == 377:
+                if len(check_dict) == size_of_anomalies:
                     break_while = False
 
     return np.array(new_data)
@@ -81,11 +87,7 @@ def reset_data():
     X_train = X_train.as_matrix()
     X_test = X_test.as_matrix()
 
-    pca = PCA(n_components = 30)
-    pca.fit(X_train)
-
-    X_train = pca.transform(X_train)
-    X_test = pca.transform(X_test)
+    X_train = undersample(X_train)
 
     np.random.shuffle(X_train)
 
@@ -95,17 +97,6 @@ def reset_data():
 
     # X_train = normalize_data(X_train)
     # X_test = normalize_data(X_test)
-
-
-def get_file_name(train_mode):
-    if train_mode:
-        feature_list_path_type = 'train'
-    else:
-        feature_list_path_type = 'test'
-
-    feature_list_path = 'challenge_data/yelp_data_' + feature_list_path_type + '_extended_features_Reviews.dat'
-
-    return feature_list_path
 
 
 def import_data(train_mode):
@@ -123,11 +114,6 @@ def write_predictions_to_file(filename, data):
         f.write('\n')
         i = i+1
     f.close()
-
-
-def remove_anomalies(dataset, labels):
-    anomaly_indices = np.where(np.array(labels) == 1)[0].tolist()
-    return np.delete(dataset, anomaly_indices, 0)
 
 
 def execute_classifier(use_training, clf):
@@ -152,15 +138,42 @@ def deleteColumnsPanda(pandaDataframe, blacklist):
     return pandaDataframe
 
 
+def visualize_anomalies():
+    data = dbSetup.getFeatures(train_mode=True)
+    data = deleteColumnsPanda(data,['id', 'proto','service','state'])
+
+    data = data.as_matrix()
+
+    data = undersample(data)
+
+    second_last_col_index = data.shape[1] - 2
+    labels = data[:, second_last_col_index]
+    data = np.delete(data, -1, 1)  # delete last column of xtrain
+    data = np.delete(data, -1, 1)  # delete last column of xtrain
+
+    tsne = manifold.TSNE(n_components=2, init='pca', random_state=0)
+    Y = tsne.fit_transform(data)
+
+    plt.scatter(
+        Y[:, 0], Y[:, 1], marker='o',
+        cmap=plt.get_cmap('Spectral'))
+    for label, x, y in zip(labels, Y[:, 0], Y[:, 1]):
+        plt.annotate(
+            label,
+            xy=(x, y), xytext=(-20, 20),
+            textcoords='offset points', ha='right', va='bottom',
+            bbox=dict(boxstyle='round,pad=0.5', fc='yellow', alpha=0.5),
+            arrowprops=dict(arrowstyle='->', connectionstyle='arc3,rad=0'))
+
+    plt.show()
+
+
 '''
     Main function. Start reading the code here
 '''
 def main():
     global training_data
     global testing_data
-    global reviewer_data
-    global hotel_data
-    global feature_list_path
     global X_train
     global X_test
     global y_train
@@ -172,6 +185,8 @@ def main():
         dbSetup.setupDatabase()
 
     dbSetup.initSQLConnection()
+
+    visualize_anomalies()
     #
     # Features = list()
     # X_train, X_test, Features  = dbSetup.import_data();
@@ -181,7 +196,7 @@ def main():
     # y_pred_train = clf.predict(X_train_cleaned)
     # print y_pred_train #predicted on X_train & not cleaned!
 
-    num_splits = 3
+    num_splits = 6
 
     kfold = KFold(n_splits=num_splits)
 
@@ -190,7 +205,7 @@ def main():
         # "Support Vector Classifier": svm.SVC(),
         # "Multi Layer Perceptron": multi_layer_perceptron,
         # "Naive Bayes": GaussianNB(),
-        # "Random Forest": RandomForestClassifier(criterion="entropy", n_estimators=40),
+        "Random Forest": RandomForestClassifier(criterion="entropy", n_estimators=40),
         # "Kmeans": KMeans(n_clusters=11, random_state=0),
         "KNN": KNeighborsClassifier(n_neighbors=3)
         # "K Means": k_means
