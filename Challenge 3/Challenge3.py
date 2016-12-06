@@ -24,6 +24,7 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.cluster import KMeans
 
+
 training_data = []
 testing_data = []
 reviewer_data = []
@@ -63,22 +64,19 @@ def reset_data():
     global y_train
     global X_test
 
-    X_train = import_data(True)
-    X_train = undersample(X_train)
+    X_train, X_test, Features = dbSetup.import_data()
+
+    X_train = deleteColumnsPanda(X_train,['proto','service','state','attack_cat'])
+    X_test = deleteColumnsPanda(X_test,['proto', 'service', 'state'])
+
+    X_train = X_train.as_matrix()
+    X_test = X_test.as_matrix()
 
     np.random.shuffle(X_train)
 
     last_col_index = X_train.shape[1] - 1
     y_train = X_train[:, last_col_index]  # Last column in labels
     X_train = np.delete(X_train, -1, 1)  # delete last column of xtrain
-    X_train = np.nan_to_num(X_train)
-    # X_train = (X_train - X_train.min(0)) / X_train.ptp(0)
-
-    X_test = import_data(False)
-    X_test = np.nan_to_num(X_test)
-    # X_test = (X_test - X_test.min(0)) / X_test.ptp(0)
-
-
 
 
 def get_file_name(train_mode):
@@ -130,6 +128,11 @@ def execute_classifier(use_training, clf):
 
         return accuracy/len(predictions)
 
+def deleteColumnsPanda(pandaDataframe, blacklist):
+    for element in blacklist:
+        del pandaDataframe[element]
+    return pandaDataframe
+
 
 '''
     Main function. Start reading the code here
@@ -145,54 +148,60 @@ def main():
     global y_train
     global y_test
 
-    reset_database = True
+    reset_database = False
 
     if reset_database:
         dbSetup.setupDatabase()
 
     dbSetup.initSQLConnection()
+    #
+    # Features = list()
+    # X_train, X_test, Features  = dbSetup.import_data();
+    # X_train_cleaned = deleteColumnsPanda(X_train,['proto','service','state','attack_cat','label'])
+    # clf = svm.OneClassSVM(nu=0.1, kernel="rbf", gamma=0.1)
+    # clf.fit(X_train_cleaned)
+    # y_pred_train = clf.predict(X_train_cleaned)
+    # print y_pred_train #predicted on X_train & not cleaned!
 
-    # reset_data()
+    num_splits = 3
 
-    # num_splits = 3
-    #
-    # kfold = KFold(n_splits=num_splits)
-    #
-    # # Define "classifiers" to be used
-    # classifiers = {
-    #     "Support Vector Classifier": svm.SVC(),
-    #     # "Multi Layer Perceptron": multi_layer_perceptron,
-    #     "Naive Bayes": GaussianNB(),
-    #     "Random Forest": RandomForestClassifier(criterion="entropy", n_estimators=40)
-    #     # "K Means": k_means
-    # }
-    #
-    # # Load data from dat file
-    #
-    # X_total = X_train
-    # y_total = y_train
-    #
-    # for name, classifier in classifiers.items():
-    #     accuracy = 0
-    #     for train_index, test_index in kfold.split(X_total):
-    #         # Use indices to seperate out training and test data
-    #         X_train, X_test = X_total[train_index], X_total[test_index]
-    #         y_train, y_test = y_total[train_index], y_total[test_index]
-    #
-    #         accuracy += execute_classifier(True, classifier)
-    #
-    #     total = accuracy / num_splits
-    #     print "Accuracy of {} is {} %".format(name, round((total)*100, 5))
-    #
-    #
-    # reset_data()
-    #
-    # # Use this loop for testing on test data
-    # for name, classifier in classifiers.items():
-    #     y_test = execute_classifier(False, classifier)
-    #     write_predictions_to_file(name + '_output.csv.dat', y_test)
-    #
-    # dbSetup.closeSQLConnection()
+    kfold = KFold(n_splits=num_splits)
+
+    # Define "classifiers" to be used
+    classifiers = {
+        # "Support Vector Classifier": svm.SVC(),
+        # "Multi Layer Perceptron": multi_layer_perceptron,
+        # "Naive Bayes": GaussianNB(),
+        "Random Forest": RandomForestClassifier(criterion="entropy", n_estimators=40)
+        # "K Means": k_means
+    }
+
+    # Load data from dat file
+    reset_data()
+    X_total = X_train
+    y_total = y_train
+
+    for name, classifier in classifiers.items():
+        accuracy = 0
+        for train_index, test_index in kfold.split(X_total):
+            # Use indices to seperate out training and test data
+            X_train, X_test = X_total[train_index], X_total[test_index]
+            y_train, y_test = y_total[train_index], y_total[test_index]
+
+            accuracy += execute_classifier(True, classifier)
+
+        total = accuracy / num_splits
+        print "Accuracy of {} is {} %".format(name, round((total)*100, 5))
+
+
+    reset_data()
+
+    # Use this loop for testing on test data
+    for name, classifier in classifiers.items():
+        y_test = execute_classifier(False, classifier)
+        write_predictions_to_file(name + '_output.csv.dat', y_test)
+
+    dbSetup.closeSQLConnection()
 
 
 if __name__ == "__main__":
