@@ -23,6 +23,9 @@ from sklearn.naive_bayes import MultinomialNB, GaussianNB, BernoulliNB
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.cluster import KMeans
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.preprocessing import normalize
+from sklearn.decomposition import PCA
 
 
 training_data = []
@@ -59,24 +62,39 @@ def undersample(data):
     return np.array(new_data)
 
 
+def normalize_data(x):
+    return x / x.max(axis=0)
+
+
 def reset_data():
     global X_train
     global y_train
     global X_test
 
-    X_train, X_test, Features = dbSetup.import_data()
+    X_train = dbSetup.getFeatures(train_mode=True)
+    X_test = dbSetup.getFeatures(train_mode=False)
 
-    X_train = deleteColumnsPanda(X_train,['proto','service','state','attack_cat'])
-    X_test = deleteColumnsPanda(X_test,['proto', 'service', 'state'])
+
+    X_train = deleteColumnsPanda(X_train,['id', 'proto','service','state', 'attack_cat'])
+    X_test = deleteColumnsPanda(X_test,['id', 'proto', 'service', 'state'])
 
     X_train = X_train.as_matrix()
     X_test = X_test.as_matrix()
+
+    pca = PCA(n_components = 30)
+    pca.fit(X_train)
+
+    X_train = pca.transform(X_train)
+    X_test = pca.transform(X_test)
 
     np.random.shuffle(X_train)
 
     last_col_index = X_train.shape[1] - 1
     y_train = X_train[:, last_col_index]  # Last column in labels
     X_train = np.delete(X_train, -1, 1)  # delete last column of xtrain
+
+    # X_train = normalize_data(X_train)
+    # X_test = normalize_data(X_test)
 
 
 def get_file_name(train_mode):
@@ -172,7 +190,9 @@ def main():
         # "Support Vector Classifier": svm.SVC(),
         # "Multi Layer Perceptron": multi_layer_perceptron,
         # "Naive Bayes": GaussianNB(),
-        "Random Forest": RandomForestClassifier(criterion="entropy", n_estimators=40)
+        # "Random Forest": RandomForestClassifier(criterion="entropy", n_estimators=40),
+        # "Kmeans": KMeans(n_clusters=11, random_state=0),
+        "KNN": KNeighborsClassifier(n_neighbors=3)
         # "K Means": k_means
     }
 

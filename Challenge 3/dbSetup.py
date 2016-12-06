@@ -45,6 +45,7 @@ def dataTypeReplacement(csv_val):
         'Timestamp': datatype_timestamp
     }[csv_val]
 
+
 def getTableColumns(feature_data):
     table_columns = []
     table_column_data_type = []
@@ -125,27 +126,33 @@ def setupDatabase():
     dbi.close()
 
 
-def getFeatures(train_mode):
+def getData(train_mode):
     if train_mode:
-        reviewer_data = np.delete(np.array([list(elem)[1:] for elem in (getFeatureReviewers(train_mode)[0])], dtype=np.float), -1, 1)
-        review_data = np.array([list(elem)[1:] for elem in (getFeatureReviewsCounts(train_mode)[0])], dtype=np.float)
-        # reviewer_length_data = np.delete(np.array([list(elem)[1:] for elem in (getFeatureReviewLength(train_mode)[0])], dtype=np.float), -1, 1)
-        # reviewer_percent_positive_reviews_data = np.delete(np.array([list(elem)[1:] for elem in (getFeaturePercentPositiveReviews(train_mode)[0])], dtype=np.float), -1, 1)
-        # reviewer_average_rating_data = np.delete(np.array([list(elem)[2:] for elem in (getFeatureAvgRatingByHotel(train_mode)[0])], dtype=np.float), -1, 1)
-        # reviewer_reviews_day_data = np.array([list(elem)[1:] for elem in (getFeatureReviewsPerDay(train_mode)[0])], dtype=np.float)
+        table = table_training
+        query = "SELECT * FROM " + table + " WHERE label=1"
     else:
-        reviewer_data = np.array([list(elem)[1:] for elem in (getFeatureReviewers(train_mode)[0])], dtype=np.float)
-        review_data = np.array([list(elem)[1:] for elem in (getFeatureReviewsCounts(train_mode)[0])], dtype=np.float)
+        table = table_testing
+        query = "SELECT * FROM " + table
 
-        # reviewer_length_data = np.array([list(elem)[1:] for elem in (getFeatureReviewLength(train_mode)[0])], dtype=np.float)
-        # reviewer_percent_positive_reviews_data = np.array([list(elem)[1:] for elem in (getFeaturePercentPositiveReviews(train_mode)[0])], dtype=np.float)
-        # reviewer_average_rating_data = np.array([list(elem)[2:] for elem in (getFeatureAvgRatingByHotel(train_mode)[0])], dtype=np.float)
-        # reviewer_reviews_day_data = np.array([list(elem)[1:] for elem in (getFeatureReviewsPerDay(train_mode)[0])], dtype=np.float)
+    dbi.getCursor().execute(query)
 
-    data = np.concatenate((reviewer_data, review_data), axis=1)
+    headers = []
+    columns = dbi.getCursor().description
+    for column in columns:
+        headers.append(column[0])
+
+    return (headers, dbi.getCursor().fetchall())
+
+
+def getFeatures(train_mode):
+    ret = getData(train_mode)
+
+    data = pd.DataFrame(ret[1])
+    data.columns = ret[0]
 
     return data
-    
+
+
 class BigTransaction():
     # how to:
     # 
