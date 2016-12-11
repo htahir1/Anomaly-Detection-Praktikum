@@ -1,0 +1,198 @@
+% This is LLNCS.DEM the demonstration file of
+% the LaTeX macro package from Springer-Verlag
+% for Lecture Notes in Computer Science,
+% version 2.4 for LaTeX2e as of 16. April 2010
+%
+\documentclass{llncs}
+%
+\usepackage{makeidx}  % allows for indexgeneration
+%
+\usepackage{graphicx}
+\graphicspath{ {images/} }
+\begin{document}
+%
+\frontmatter          % for the preliminaries
+%
+\pagestyle{headings}  % switches on printing of running heads
+
+\mainmatter              % start of the contributions
+%
+\title{Anomaly Detection Challenges - Challenge II}
+%
+\titlerunning{Challenge 1}  % abbreviated title (for running head)
+%                                     also used for the TOC unless
+
+%
+\author{Hamza Tahir (03670002) \and Muhammad Hamza Usmani (03669506)}
+%
+\authorrunning{Tahir \and Usmani} % abbreviated author list (for running head)
+%
+\institute{Technical University of Munich}
+%%%% list of authors for the TOC (use if author list has to be modified)
+
+\maketitle              % typeset the title of the contribution
+
+
+%
+\section{Introduction}
+%
+This brief report serves as a purpose to present and explain the methodologies applied to tackle the second challenge in the Practical: Anomaly Detection Challenges. Section~2 discusses the challenge task and the data set for the machine learning/anomaly detection task. Section~3 explains the approaches adopted for the task.
+%
+\section{The Challenge}
+%
+%
+\subsubsection{Machine Learning Task}
+%
+The machine learning task for this challenge is to determine if hotel review from Yelp dataset is 'fake' or not 'fake'
+\begin{table}
+\caption{Decision Classes}
+\begin{center}
+\begin{tabular}{r@{\quad}rl}
+\hline
+\multicolumn{1}{l}{\rule{2pt}{0pt}
+Class}&\multicolumn{2}{l}{Representation}\\[2pt]
+\hline\rule{0pt}{12pt}
+Fake Review&    Y& \\
+Genuine Review&     N& \\[2pt]
+\hline
+\end{tabular}
+\end{center}
+\end{table}
+%
+\subsubsection{The Data set}
+The dataset consists of hotel reviews from Yelp data set. The reviews are hotel reviews from Illinois Chicago area. The training data set of the challenge consists of 2969 reviews. The training data set has uneven class distribution, there are 2319 genuine reviews while there are 377 fake samples. The test data has 2950 reviews.
+
+Hotel data about all reviews is also available, while almost all data about reviewers is also part of the data set, the data of 4 reviewers in the training set and 9 reviewers in test set is however missing.
+
+\section{Methodology}
+This section explains the data analysis and the machine learning process to build the model for classifying the given samples as fake  or not fake reviews. 
+\subsection{Behavioral Features}
+Linguistic features can at times are not be useful in finding if a review is fake or not,  \cite{arjun:et}. Behavioral features can help with classification of reviews as fake or not, using spamming behavioral analysis, \cite{arjun:et} have suggested the following features:
+%
+\subsubsection{Maximum Number of Reviews (MNR):}
+%
+Maximum number of reviews (MNR), or maximum reviews per reviewer per day are number of reviews of a reviewer in a day. According to \cite{arjun:et} , spammers have more reviews per day, in comparison to non-spammers. 
+%
+\subsubsection{Percentage of Positive Reviews (PR):}
+%
+Percentage Positive Reviews (PR) is the percentage of reviews of a reviewer that are positive. A review is considered to be positive by \cite{arjun:et} when it is rated 4+. Majority of spammers have most of their reviews as positive.
+%
+\subsubsection{Review Length (RL):}
+%
+Review Length (RL) is another behavioral feature considered by \cite{arjun:et} to distinguish between spammers and non-spammers. Majority of spammers have higher average review word length (>200), according to \cite{arjun:et}.
+%
+\subsubsection{Reviewer Deviation (RD):}
+%
+The spammers are likely to deviate from the general opinion \cite{arjun:et}.  The  reviewer deviation is the difference between a rating and the average rating of a hotel. According to \cite{arjun:et}; majority of non-spammers are bounded by an absolute deviation of 0.6.
+%
+\subsubsection{Maximum Content Similarity (MCS):}
+%
+Maximum Content Similarity (MCS) is the content similarity between a review and all reviews of the same reviewer. According to \cite{arjun:et}, spammers have very low content similarity. Content similarity can be calculated as reciprocal of cosine distance between contents.
+%
+
+\subsection{Feature Scaling}
+The given features and the extended behavioral features have different scales, this required to normalize all features on one scale, so that the different ranges and scales of features do not contribute to relative weights of those features. To normalize, the following method was used:
+\[ X^{'} =\frac{X - X_{min}}{X_{max} - X_{min}}   \]
+
+\subsection{Re-sampling}
+The training data set is higher number of non-fake to fake reviews, thus the data was re-sampled to build a robust classifier. The re-sampled data set had 377 genuine reviews that were randomly chosen from the data set, and 377fake reviews from the training data set.
+
+\subsection{Machine Learning Techniques}
+Following machine learning techniques were used to classify given samples as "Genuine Review" aka. "Non-fake review" (represented as 0 or "N") or "Fake Review"(represented as 1 or "Y"):
+\begin{enumerate}
+   \item Naive Bayes
+   \item Support Vector Classifier (SVC)
+   \item Random Forest
+ \end{enumerate}
+ 
+\subsection{Generalizing - Developing a Robust Classifier}
+To build a robust classifier, that is relatively general and is not restricted only to the given training set following techniques were used:
+
+\subsubsection{Three-fold Cross Validation:} Three-fold cross validation was used to overcome the problem of over-fitting, and to build a model to that will generalize to an independent dataset, Hawkins et. al. (see \cite{hawkins:eke}).  
+
+
+\section{Results}
+Results of the challenge are summarized in this section. We present two basic results. One is with out classifiers trained on all features, without weighing. Second with our classifiers trained with only three features (first, second and fourth), therefore giving 0 weight to the third feature.
+
+\begin{table}
+\centering
+  \caption{Behavioral Features Comparison}
+\begin{tabular}{ |p{3cm}|p{4cm}| p{4cm}|}
+ \hline
+ Feature                        &Claim                  &In Given Dataset\\
+ \hline
+Max Number of Reviews (MNR)     &Spammers have multiple reviews per day.  &Most reviewers post only once per day\\
+ \hline
+Review Length (RL)  &Fake reviews have greater lengths.   &Average length of fake reviews is 122 while that of genuine one is 157 words.\\
+ \hline
+Percent Positive Reviews (PR)   &Spammers generally rate more, in most of their reviews.   &Average of Percentage Positive Reviews of Spammers is: 0.52, while that of Non-spammers is 0.62.\\
+ \hline
+Reviewer Deviation (RD)               &Spammers deviate more than general opinion.     &Spammers on average deviate by 1.17 stars, while genuine reviewers deviate on average by 0.85.\\
+
+  \hline
+\end{tabular}
+\label{table}
+\end{table}
+
+
+\clearpage
+\begin{table}
+\centering
+  \caption{Best Average Cross-Validation Accuracies (without feature weighing) }
+\begin{tabular}{ |p{3cm}||p{2cm}|p{2cm}|p{2cm}| p{2cm}| }
+ \hline
+ \multicolumn{5}{|c|}{Training Accuracies} \\
+ \hline
+ Technique                  &Feature Mean    &Feature Max    &Nine-Neighbor  &Immediate-Neighbor\\
+ \hline
+ Naive Bayes                &98.422    &96.979      &98.535     &98.512\\
+ SVC                        &97.813    &94.295      &97.858     &98.377\\
+ Random Forest              &98.647    &97.610      &97.970     &98.715\\
+ \hline
+ Average     &\textbf{97.796}     &\textbf{96.985}       &\textbf{97.873}     &\textbf{98.354}\\
+  \hline
+\end{tabular}
+\label{table}
+\end{table}
+
+\begin{table}
+	\centering
+	\caption{Best Average Cross-Validation Accuracies (with feature weighing) }
+	\begin{tabular}{ |p{3cm}||p{2cm}|p{2cm}|p{2cm}| p{2cm}| }
+		\hline
+		\multicolumn{5}{|c|}{Training Accuracies} \\
+		\hline
+		Technique& Feature Mean & Feature Max & Nine-Neighbor & Immediate-Neighbor\\
+		\hline
+		Decision Trees              &97.994    &97.002      &97.610     &97.566\\
+		Multi-Layer Perceptron      &97.250    &95.942      &97.565     &97.632\\
+		Naive Bayes                 &98.377    &96.397      &98.557    &98.512\\
+		KNN                         &97.881    &96.619      &98.693     &98.85\\
+		SVC                         &97.565    &94.656      &98.197     &98.377\\
+		Random Forest               &98.625    &98.197      &98.715     &98.625\\
+		\hline
+		 Average     &\textbf{97.948}     &\textbf{96.468}       &\textbf{98.222}     &\textbf{98.260}\\
+		 \hline
+	\end{tabular}
+	\label{table}
+\end{table}
+
+
+
+%
+% ---- Bibliography ----
+%
+\begin{thebibliography}{5}
+%
+\bibitem {arjun:et}
+Mukherjee A., Venkatarman V., Liu Bing and Glance N.:
+What Yelp Fake Review Filter Might Be Doing?
+Seventh International AAAI Conference Weblogs and Social Media
+
+\bibitem {hawkins:eke}
+Hawkins D. , Basak S. , and Denise M. 
+Assessing Model Fit by Cross-Validation
+J. Chem. Inf. Comput. Sci., 2003, 43 (2), pp 579–586 (2003)
+
+\end{thebibliography}
+\end{document}
