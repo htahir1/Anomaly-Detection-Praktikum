@@ -16,20 +16,18 @@ import string
 import dbSetup
 from sklearn.ensemble import RandomForestClassifier
 from sklearn import svm
-from sklearn.neighbors import KernelDensity
 import numpy as np
-from sklearn.neighbors import NearestNeighbors
-from sklearn.neural_network import MLPClassifier
-from sklearn.naive_bayes import MultinomialNB, GaussianNB, BernoulliNB
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.neighbors import KNeighborsRegressor
 from sklearn.cluster import KMeans
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.preprocessing import normalize
 from sklearn.decomposition import PCA
 import matplotlib.pyplot as plt
+from sklearn.neighbors import KNeighborsRegressor
+from sklearn.neighbors import NearestNeighbors
+from sklearn.feature_selection import RFE
+from sklearn.linear_model import LogisticRegression
 
-
+attack_cats = []
 training_data = []
 testing_data = []
 reviewer_data = []
@@ -42,7 +40,7 @@ y_test = []
 '''
     Helper functions
 '''
-def undersample(data):
+def undersample(data, how_many_extra_normal=0):
     new_data = []
     check_dict = {}
 
@@ -62,41 +60,49 @@ def undersample(data):
                 new_data.append(data[random_row_index])
                 check_dict[random_row_index] = 1
 
-                if len(check_dict) == size_of_anomalies:
+                if len(check_dict) == size_of_anomalies + how_many_extra_normal:
                     break_while = False
 
     return np.array(new_data)
 
 
 def normalize_data(x):
-    return x / x.max(axis=0)
+    return (x - x.min(0)) / x.ptp(0)
 
 
-def reset_data():
+def reset_data(with_undersampling=True):
     global X_train
     global y_train
     global X_test
+    global attack_cats
 
     X_train = dbSetup.getFeatures(train_mode=True)
     X_test = dbSetup.getFeatures(train_mode=False)
 
-
-    X_train = deleteColumnsPanda(X_train,['id', 'proto','service','state', 'attack_cat'])
-    X_test = deleteColumnsPanda(X_test,['id', 'proto', 'service', 'state'])
+    X_train = deleteColumnsPanda(X_train, ['id', 'proto','service','state'])
+    X_test = deleteColumnsPanda(X_test, ['id', 'proto', 'service', 'state'])
 
     X_train = X_train.as_matrix()
     X_test = X_test.as_matrix()
 
-    X_train = undersample(X_train)
+    # X_train = normalize_data(X_train)
+    # X_test = normalize_data(X_test)
+    # X_train = np.nan_to_num(X_train)
+    # X_test = np.nan_to_num(X_test)
+
+    if with_undersampling:
+        X_train = undersample(X_train)
 
     np.random.shuffle(X_train)
 
     last_col_index = X_train.shape[1] - 1
-    y_train = X_train[:, last_col_index]  # Last column in labels
+    y_train = X_train[:, last_col_index].astype(int)  # Last column in labels
     X_train = np.delete(X_train, -1, 1)  # delete last column of xtrain
 
-    # X_train = normalize_data(X_train)
-    # X_test = normalize_data(X_test)
+    last_col_index = X_train.shape[1] - 1
+    attack_cats = X_train[:, last_col_index]  # Last column in labels
+    X_train = np.delete(X_train, -1, 1)  # delete last column of xtrain
+
 
 
 def import_data(train_mode):
@@ -144,14 +150,14 @@ def visualize_anomalies():
 
     data = data.as_matrix()
 
-    data = undersample(data)
+    data = undersample(data, how_many_extra_normal=40)
 
     second_last_col_index = data.shape[1] - 2
     labels = data[:, second_last_col_index]
     data = np.delete(data, -1, 1)  # delete last column of xtrain
     data = np.delete(data, -1, 1)  # delete last column of xtrain
 
-    tsne = manifold.TSNE(n_components=2, init='pca', random_state=0)
+    tsne = manifold.TSNE(n_components=3, init='pca', random_state=0)
     Y = tsne.fit_transform(data)
 
     plt.scatter(
@@ -168,6 +174,67 @@ def visualize_anomalies():
     plt.show()
 
 
+def local_reachability_distance(nn_indices, distance_data, k):
+    rd = 0
+    point_index = nn_indices[0]
+    neighbour_indices = nn_indices[1:k+1]
+    #
+    # for distance_index in range(0, len(neighbour_indices)):
+    #     true_distance = distance_data[point_index][distance_index + 1]  # Find actual distance
+    #     k_distance = max(distance_data[point_index]) #
+    #     rd += max(k_distance, true_distance)
+    #     distance_index += 1
+
+    return 1 / (max(distance_data[point_index]) / k)
+
+
+def unsupervised_technique(X_train, y_train, X_test, y_test, attack_cats_train):
+    # find k-nearest neighbours of a point
+    lofs = []
+    k = 3
+    nbrs = NearestNeighbors(n_neighbors=k+1, metric='euclidean').fit(X_train)  # Find nearest neighbours
+    nn_distances, nn_indices = nbrs.kneighbors(X_train)
+
+    for index in nn_indices:  # For all points
+        point_index = index[0]  # The first one is the point itself
+
+        neighbour_indices = index[1:k+1]  # The rest are the nearest neighbors
+
+        print "**************************"
+        print attack_cats_train[point_index]
+        for i in range(0, len(neighbour_indices)):
+            print attack_cats_train[neighbour_indices[i]], nn_distances[point_index][i+1]
+
+
+    #     plt.show()
+    #
+    #     lrd_sum = 0
+    #     for neighbour_index in neighbour_indices:  # All neighbors of neighbors
+    #         lrd_sum += local_reachability_distance(nn_indices[neighbour_index], nn_distances, k)
+    #
+    #     normalized_lrd_n = lrd_sum / k  # Take average of LRD's of all neighbor of neighbors
+    #     lrd_point = local_reachability_distance(nn_indices[point_index], nn_distances, k)
+    #     lofs.append(normalized_lrd_n / lrd_point)
+    #
+    # accuracy = 0
+    # threshold = 1.2
+    # for i in range(0, len(lofs)):
+    #     if lofs[i] > threshold and y_train[i] == 0:
+    #         accuracy += 1
+    #     if lofs[i] <= threshold and y_train[i] == 1:
+    #         accuracy += 1
+
+    # return accuracy/len(lofs)
+
+def kmeans():
+    print "\n****************** K MEANS ****************************\n"
+    clf = KMeans(n_clusters=2)
+    clf.fit(X_train)
+
+    predictions = clf.predict(X_test)
+
+    for i in range(0, len(attack_cats)):
+        print predictions[i], y_train[i], attack_cats[i]
 '''
     Main function. Start reading the code here
 '''
@@ -178,6 +245,7 @@ def main():
     global X_test
     global y_train
     global y_test
+    global attack_cats
 
     reset_database = False
 
@@ -187,16 +255,8 @@ def main():
     dbSetup.initSQLConnection()
 
     visualize_anomalies()
-    #
-    # Features = list()
-    # X_train, X_test, Features  = dbSetup.import_data();
-    # X_train_cleaned = deleteColumnsPanda(X_train,['proto','service','state','attack_cat','label'])
-    # clf = svm.OneClassSVM(nu=0.1, kernel="rbf", gamma=0.1)
-    # clf.fit(X_train_cleaned)
-    # y_pred_train = clf.predict(X_train_cleaned)
-    # print y_pred_train #predicted on X_train & not cleaned!
 
-    num_splits = 6
+    num_splits = 3
 
     kfold = KFold(n_splits=num_splits)
 
@@ -206,10 +266,18 @@ def main():
         # "Multi Layer Perceptron": multi_layer_perceptron,
         # "Naive Bayes": GaussianNB(),
         "Random Forest": RandomForestClassifier(criterion="entropy", n_estimators=40),
-        # "Kmeans": KMeans(n_clusters=11, random_state=0),
-        "KNN": KNeighborsClassifier(n_neighbors=3)
+        "KNN Classifier": KNeighborsClassifier(n_neighbors=3),
+        "Logistic Regression": LogisticRegression(),
+        "KNN Regressor": KNeighborsRegressor(n_neighbors=3)
         # "K Means": k_means
     }
+
+    # Load data from dat file
+    reset_data(with_undersampling=True)
+    unsupervised_technique(X_train, y_train, X_test, y_test, attack_cats)
+
+    reset_data(with_undersampling=True)
+    kmeans()
 
     # Load data from dat file
     reset_data()
@@ -224,6 +292,7 @@ def main():
             y_train, y_test = y_total[train_index], y_total[test_index]
 
             accuracy += execute_classifier(True, classifier)
+
 
         total = accuracy / num_splits
         print "Accuracy of {} is {} %".format(name, round((total)*100, 5))
