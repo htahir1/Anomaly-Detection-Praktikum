@@ -79,14 +79,13 @@ def reset_data(with_undersampling=True):
     X_train = dbSetup.getFeatures(train_mode=True)
     X_test = dbSetup.getFeatures(train_mode=False)
 
-    X_train = deleteColumnsPanda(X_train, ['id', 'proto','service','state'])
+    X_train = deleteColumnsPanda(X_train, ['id', 'proto','service','state', 'attack_cat'])
     X_test = deleteColumnsPanda(X_test, ['id', 'proto', 'service', 'state'])
-
     X_train = X_train.as_matrix()
     X_test = X_test.as_matrix()
 
-    # X_train = normalize_data(X_train)
-    # X_test = normalize_data(X_test)
+    X_train = normalize_data(X_train)
+    X_test = normalize_data(X_test)
     # X_train = np.nan_to_num(X_train)
     # X_test = np.nan_to_num(X_test)
 
@@ -101,7 +100,7 @@ def reset_data(with_undersampling=True):
 
     last_col_index = X_train.shape[1] - 1
     attack_cats = X_train[:, last_col_index]  # Last column in labels
-    X_train = np.delete(X_train, -1, 1)  # delete last column of xtrain
+    #X_train = np.delete(X_train, -1, 1)  # delete last column of xtrain
 
 
 
@@ -124,7 +123,6 @@ def write_predictions_to_file(filename, data):
 
 def execute_classifier(use_training, clf):
     clf.fit(X_train, y_train)
-
     predictions = clf.predict(X_test)
     predictions = np.round(predictions)
 
@@ -254,7 +252,7 @@ def main():
 
     dbSetup.initSQLConnection()
 
-    visualize_anomalies()
+    #visualize_anomalies()
 
     num_splits = 3
 
@@ -269,15 +267,15 @@ def main():
         "KNN Classifier": KNeighborsClassifier(n_neighbors=3),
         "Logistic Regression": LogisticRegression(),
         "KNN Regressor": KNeighborsRegressor(n_neighbors=3)
-        # "K Means": k_means
+         #"K Means": k_means
     }
 
     # Load data from dat file
     reset_data(with_undersampling=True)
     unsupervised_technique(X_train, y_train, X_test, y_test, attack_cats)
 
-    reset_data(with_undersampling=True)
-    kmeans()
+    #reset_data(with_undersampling=True)
+    #kmeans()
 
     # Load data from dat file
     reset_data()
