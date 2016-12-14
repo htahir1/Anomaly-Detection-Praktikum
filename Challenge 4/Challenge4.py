@@ -52,6 +52,21 @@ def undersample(data, how_many_extra_normal=0):
     return np.array(new_data)
 
 
+def get_data(training):
+    if training:
+        filename = "data/training_set_dedup"
+    else:
+        filename = "data/test_set_dedup"
+
+    data = []
+    with open(filename) as data_file:
+        for row in data_file:
+            j = json.loads(row)
+            data.append(j)
+
+    return data
+
+
 def normalize_data(x):
     return normalize(x, norm='l2')
 
@@ -61,30 +76,28 @@ def reset_data(with_undersampling=True):
     global y_train
     global X_test
 
-    with open("data/training_set_dedup") as data_file:
-        X_train = json.load(data_file)
-    with open("data/test_set_dedup") as data_file:
-        X_test = json.load(data_file)
+    X_train = get_data(training=True)
+    X_test = get_data(training=False)
 
-    X_train = deleteColumnsPanda(X_train, ['id', 'proto','service','state'])
-    X_test = deleteColumnsPanda(X_test, ['id', 'proto', 'service', 'state'])
-    X_train = X_train.as_matrix()
-    X_test = X_test.as_matrix()
-
-    # X_train = np.nan_to_num(X_train)
-    # X_test = np.nan_to_num(X_test)
-
-    if with_undersampling:
-        X_train = undersample(X_train)
-
-    np.random.shuffle(X_train)
-
-    last_col_index = X_train.shape[1] - 1
-    y_train = X_train[:, last_col_index].astype(int)  # Last column in labels
-    X_train = np.delete(X_train, -1, 1)  # delete last column of xtrain
-
-    X_train = normalize_data(X_train)
-    X_test = normalize_data(X_test)
+    # X_train = deleteColumnsPanda(X_train, ['id', 'proto','service','state'])
+    # X_test = deleteColumnsPanda(X_test, ['id', 'proto', 'service', 'state'])
+    # X_train = X_train.as_matrix()
+    # X_test = X_test.as_matrix()
+    #
+    # # X_train = np.nan_to_num(X_train)
+    # # X_test = np.nan_to_num(X_test)
+    #
+    # if with_undersampling:
+    #     X_train = undersample(X_train)
+    #
+    # np.random.shuffle(X_train)
+    #
+    # last_col_index = X_train.shape[1] - 1
+    # y_train = X_train[:, last_col_index].astype(int)  # Last column in labels
+    # X_train = np.delete(X_train, -1, 1)  # delete last column of xtrain
+    #
+    # X_train = normalize_data(X_train)
+    # X_test = normalize_data(X_test)
 
 
 def import_data(train_mode):
@@ -174,8 +187,6 @@ def main():
     if reset_database:
         dbSetup.setupDatabase()
 
-    dbSetup.initSQLConnection()
-
     # visualize_anomalies()
 
     num_splits = 3
@@ -219,8 +230,6 @@ def main():
     for name, classifier in classifiers.items():
         y_test = execute_classifier(False, classifier)
         write_predictions_to_file(name + '_output.csv.dat', y_test)
-
-    dbSetup.closeSQLConnection()
 
 
 if __name__ == "__main__":
