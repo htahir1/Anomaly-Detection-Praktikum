@@ -1,0 +1,7 @@
+Malicious Vs Normal:
+No exports in malicious.
+~28 exports in all benigns
+a lot of imports in both (~85)
+pehash missing for some malicious
+debug missing for some malicious
+dlls like COMCTL32.dll used only in malicious
