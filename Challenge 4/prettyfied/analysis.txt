@@ -1,0 +1,8 @@
+
+
+differences between malicious and normal:
+
+1) Malicious files have 0 entropy pe_sections
+2) Malicious files have 0 size pe_sections
+3) Malicious files have something like setup or install in their version info
+4) Normal files usually have debug information
