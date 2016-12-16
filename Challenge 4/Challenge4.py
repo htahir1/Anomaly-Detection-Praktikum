@@ -187,6 +187,16 @@ def process_data(data):
     return processed_data
 
 
+def process_train_test():
+    global X_train
+    global y_train
+    global X_test
+
+    last_col_index = X_train.shape[1] - 1
+    y_train = X_train[:, last_col_index]  # Last column in labels
+    X_train = np.delete(X_train, -1, 1)  # delete last column of xtrain
+
+
 def write_extended_features():
     global X_train
     global y_train
@@ -198,24 +208,29 @@ def write_extended_features():
     X_train = process_data(X_train)
     X_test = process_data(X_test)
 
-    last_col_index = X_train.shape[1]-1
-    y_train = X_train[:, last_col_index]  # Last column in labels
-    X_train = np.delete(X_train, -1, 1)  # delete last column of xtrain
+    # Binary data
+    np.save('data/training_extended_binary.npy', X_train)
+    np.save('data/testing_extended_binary.npy', X_test)
 
     np.savetxt("data/training_extended.csv", np.asarray(X_train), delimiter=",")
     np.savetxt("data/testing_extended.csv", np.asarray(X_test), delimiter=",")
 
+    process_train_test()
+
 
 def reset_data(with_undersampling=True, reset_extended=True):
-    # global X_train
-    # global y_train
-    # global X_test
-    #
-    # X_test = []
-    # X_train = []
-    # y_train = []
+    global X_train
+    global y_train
+    global X_test
+
     if reset_extended:
         write_extended_features()
+    else:
+        X_train = np.load("data/training_extended_binary.csv")
+        X_test = np.load("data/testing_extended_binary.csv")
+
+        process_train_test()
+
 
 def import_data(train_mode):
     return dbSetup.getFeatures(train_mode)
@@ -305,7 +320,7 @@ def main():
     global y_test
 
     reset_database = False
-    reset_extended = True
+    reset_extended = False
 
     if reset_database:
         dbSetup.setupDatabase()
