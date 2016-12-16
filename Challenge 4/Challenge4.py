@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.linear_model import LogisticRegression
 from sklearn import decomposition
+from sklearn.svm import SVC
 
 attack_cats = []
 training_data = []
@@ -226,8 +227,8 @@ def reset_data(with_undersampling=True, reset_extended=True):
     if reset_extended:
         write_extended_features()
     else:
-        X_train = np.load("data/training_extended_binary.csv")
-        X_test = np.load("data/testing_extended_binary.csv")
+        X_train = np.load("data/training_extended_binary.npy")
+        X_test = np.load("data/testing_extended_binary.npy")
 
         process_train_test()
 
@@ -336,7 +337,8 @@ def main():
         "Random Forest": RandomForestClassifier(criterion="entropy", n_estimators=40),
         "KNN Classifier": KNeighborsClassifier(n_neighbors=3),
         "Logistic Regression": LogisticRegression(),
-        "KNN Regressor": KNeighborsRegressor(n_neighbors=3)
+        "KNN Regressor": KNeighborsRegressor(n_neighbors=3),
+        "SVC" : SVC()
     }
 
     # Load data from dat file
