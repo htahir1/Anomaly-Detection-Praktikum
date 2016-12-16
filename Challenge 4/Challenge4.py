@@ -247,7 +247,7 @@ def write_predictions_to_file(filename, data):
             j = json.loads(row)
             f.write('%s' % j["sha256"])
             f.write(',')
-            f.write('%s' % int(data[i]))
+            f.write('%s' % 'benign' if data[i] == 0 else 'malicious')
             f.write('\n')
 
             i = i + 1
@@ -269,6 +269,7 @@ def execute_classifier(use_training, clf):
                 accuracy += 1
 
         return accuracy/len(predictions)
+
 
 def deleteColumnsPanda(pandaDataframe, blacklist):
     for element in blacklist:
