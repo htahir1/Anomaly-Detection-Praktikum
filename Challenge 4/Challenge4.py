@@ -52,12 +52,18 @@ def undersample(data, how_many_extra_normal=0):
     return np.array(new_data)
 
 
-def get_data(training):
+def get_filename(training):
     if training:
         filename = "data/training_set_dedup"
     else:
         filename = "data/test_set_dedup"
 
+    return filename
+
+
+def get_data(training):
+
+    filename = get_filename(training)
     data = []
     with open(filename) as data_file:
         for row in data_file:
@@ -71,7 +77,117 @@ def normalize_data(x):
     return normalize(x, norm='l2')
 
 
-def reset_data(with_undersampling=True):
+def check_json(json_obj, key):
+    if key in json_obj and json_obj[key] != None:
+        return True
+    return False
+
+
+def process_data(data):
+    processed_data = []
+
+    for json_obj in data:
+        processed_data_inner = []
+        json_obj_orig = json_obj
+
+        if check_json(json_obj, "results"):
+            json_obj = json_obj["results"]["peinfo"]
+        else:
+            json_obj = json_obj["peinfo"]
+
+        #### Number of Exports ####
+        if check_json(json_obj, "exports"):
+            processed_data_inner.append(len(json_obj["exports"]))
+        else:
+            processed_data_inner.append(0)
+
+        #### Number of Imports ####
+        if check_json(json_obj, "imports"):
+            processed_data_inner.append(len(json_obj["imports"]))
+        else:
+            processed_data_inner.append(0)
+
+        #### COMCTL32 ####
+        if check_json(json_obj, "imports"):
+            count = 0
+            for imports in json_obj["imports"]:
+               if imports["dll"] == "COMCTL32.dll":
+                   count += 1
+            processed_data_inner.append(count)
+        else:
+            processed_data_inner.append(0)
+
+        #### PESECTIONS ####
+        if check_json(json_obj, "pe_sections"):
+            size_array = []
+            virt_size_array = []
+            entropy_array = []
+
+            for pe_section in json_obj["pe_sections"]:
+                size_array.append(pe_section["size"])
+                virt_size_array.append(pe_section["virt_size"])
+                entropy_array.append(pe_section["entropy"])
+
+            if len(size_array) != 0:
+                processed_data_inner.append(sum(size_array) / float(len(size_array)))
+            else:
+                processed_data_inner.append(0)
+
+            if len(virt_size_array) != 0:
+                processed_data_inner.append(sum(virt_size_array) / float(len(virt_size_array)))
+            else:
+                processed_data_inner.append(0)
+
+            if len(entropy_array) != 0:
+                processed_data_inner.append(sum(entropy_array) / float(len(entropy_array)))
+            else:
+                processed_data_inner.append(0)
+        else:
+            processed_data_inner.append(0)
+            processed_data_inner.append(0)
+            processed_data_inner.append(0)
+
+        #### Pehash ####
+        if check_json(json_obj, "pehash"):
+            processed_data_inner.append(1)
+        else:
+            processed_data_inner.append(0)
+
+        #### Debug ####
+        if check_json(json_obj, "debug"):
+            processed_data_inner.append(1)
+        else:
+            processed_data_inner.append(0)
+
+        #### Rich Header ####
+        # times_used_array = []
+        # if check_json(json_obj, "rich_header"):
+        #     if check_json(json_obj["rich_header"], "values_parsed"):
+        #         for times_used in json_obj["rich_header"]["values_parsed"]:
+        #             times_used_array.append(times_used["times_used"])
+        #
+        #         if len(times_used_array) != 0:
+        #             processed_data_inner.append(sum(times_used_array) / float(len(times_used_array)))
+        #         else:
+        #             processed_data_inner.append(0)
+        #     else:
+        #         processed_data_inner.append(0)
+        # else:
+        #     processed_data_inner.append(0)
+
+
+        #### Label ####
+        if check_json(json_obj_orig, "label"):
+            processed_data_inner.append(1 if json_obj_orig["label"] == "malicious" else 0)
+
+        processed_data.append(np.array(processed_data_inner))
+
+    processed_data = np.array(processed_data)
+    print np.shape(processed_data)
+    return processed_data
+
+
+def write_extended_features():
     global X_train
     global y_train
     global X_test
@@ -79,26 +195,27 @@ def reset_data(with_undersampling=True):
     X_train = get_data(training=True)
     X_test = get_data(training=False)
 
-    # X_train = deleteColumnsPanda(X_train, ['id', 'proto','service','state'])
-    # X_test = deleteColumnsPanda(X_test, ['id', 'proto', 'service', 'state'])
-    # X_train = X_train.as_matrix()
-    # X_test = X_test.as_matrix()
-    #
-    # # X_train = np.nan_to_num(X_train)
-    # # X_test = np.nan_to_num(X_test)
-    #
-    # if with_undersampling:
-    #     X_train = undersample(X_train)
-    #
-    # np.random.shuffle(X_train)
-    #
-    # last_col_index = X_train.shape[1] - 1
-    # y_train = X_train[:, last_col_index].astype(int)  # Last column in labels
-    # X_train = np.delete(X_train, -1, 1)  # delete last column of xtrain
-    #
-    # X_train = normalize_data(X_train)
-    # X_test = normalize_data(X_test)
+    X_train = process_data(X_train)
+    X_test = process_data(X_test)
 
+    last_col_index = X_train.shape[1]-1
+    y_train = X_train[:, last_col_index]  # Last column in labels
+    X_train = np.delete(X_train, -1, 1)  # delete last column of xtrain
+
+    np.savetxt("data/training_extended.csv", np.asarray(X_train), delimiter=",")
+    np.savetxt("data/testing_extended.csv", np.asarray(X_test), delimiter=",")
+
+
+def reset_data(with_undersampling=True, reset_extended=True):
+    # global X_train
+    # global y_train
+    # global X_test
+    #
+    # X_test = []
+    # X_train = []
+    # y_train = []
+    if reset_extended:
+        write_extended_features()
 
 def import_data(train_mode):
     return dbSetup.getFeatures(train_mode)
@@ -106,14 +223,19 @@ def import_data(train_mode):
 
 def write_predictions_to_file(filename, data):
     f = open(filename, 'w')
-    f.write('id,label\n')
-    i = 1
-    for item in data:
-        f.write('%s' % i)
-        f.write(',')
-        f.write('%s' % int(item))
-        f.write('\n')
-        i = i+1
+    f.write('sha256,label\n')
+    i = 0
+    filename = get_filename(False)
+    with open(filename) as data_file:
+        for row in data_file:
+            j = json.loads(row)
+            f.write('%s' % j["sha256"])
+            f.write(',')
+            f.write('%s' % int(data[i]))
+            f.write('\n')
+
+            i = i + 1
+
     f.close()
 
 
@@ -183,6 +305,7 @@ def main():
     global y_test
 
     reset_database = False
+    reset_extended = True
 
     if reset_database:
         dbSetup.setupDatabase()
@@ -206,7 +329,7 @@ def main():
 
 
     # Load data from dat file
-    reset_data()
+    reset_data(reset_extended=reset_extended)
     X_total = X_train
     y_total = y_train
 
@@ -224,7 +347,7 @@ def main():
         print "Accuracy of {} is {} %".format(name, round((total)*100, 5))
 
 
-    reset_data()
+    reset_data(reset_extended=reset_extended)
 
     # Use this loop for testing on test data
     for name, classifier in classifiers.items():
