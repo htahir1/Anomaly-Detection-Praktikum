@@ -15,10 +15,7 @@ from sklearn import decomposition
 from sklearn.svm import SVC
 
 attack_cats = []
-training_data = []
-testing_data = []
-reviewer_data = []
-hotel_data = []
+
 X_train = []
 y_train = []
 X_test = []
@@ -74,8 +71,12 @@ def get_data(training):
     return data
 
 
-def normalize_data(x):
-    return normalize(x, norm='l2')
+def normalize_data(x,mode):
+    if mode == 'l2':
+        return normalize(x, norm='l2')
+    else:
+        return ((x - np.amin(x, axis = 0)) / x.ptp(0))
+
 
 
 def check_json(json_obj, key):
@@ -212,9 +213,8 @@ def write_extended_features():
     # Binary data
     np.save('data/training_extended_binary.npy', X_train)
     np.save('data/testing_extended_binary.npy', X_test)
-
-    np.savetxt("data/training_extended.csv", np.asarray(X_train), delimiter=",")
-    np.savetxt("data/testing_extended.csv", np.asarray(X_test), delimiter=",")
+    np.savetxt("data/training_extended.csv", np.asarray(X_train), delimiter=",",fmt='%.2f')
+    np.savetxt("data/testing_extended.csv", np.asarray(X_test), delimiter=",",fmt='%.2f')
 
     process_train_test()
 
@@ -309,6 +309,14 @@ def visualize_anomalies():
 
     plt.show()
 
+def generic_numeric(clf_name,clf,instance,min,max,element):
+    classifier = {}
+    for i in range(min,max):
+        tmp = clf()
+        tmp.__setattr__(element,i)
+        classifier["_".join((clf_name,element,str(i)))] = tmp
+    return classifier
+
 
 '''
     Main function. Start reading the code here
@@ -323,34 +331,40 @@ def main():
 
     reset_database = False
     reset_extended = False
+    optimize_params = False
 
     if reset_database:
         dbSetup.setupDatabase()
 
     # visualize_anomalies()
 
-    num_splits = 3
+    num_splits = 10
 
     kfold = KFold(n_splits=num_splits)
-
+    if not optimize_params:
     # Define "classifiers" to be used
-    classifiers = {
-        "Random Forest": RandomForestClassifier(criterion="entropy", n_estimators=40),
-        "KNN Classifier": KNeighborsClassifier(n_neighbors=3),
-        "Logistic Regression": LogisticRegression(),
-        "KNN Regressor": KNeighborsRegressor(n_neighbors=3),
-        "SVC" : SVC()
-    }
+        classifiers = {
+            "Random Forest": RandomForestClassifier(criterion="gini", n_estimators=32),
+            "KNN Classifier": KNeighborsClassifier(n_neighbors=2, metric='minkowski', p = 2),
+            "Logistic Regression": LogisticRegression(),
+            "KNN Regressor": KNeighborsRegressor(n_neighbors=3),
+            "SVC" : SVC()
+        }
+    else:
+        classifiers = generic_numeric("RandomForest",RandomForestClassifier, RandomForestClassifier(criterion="entropy"),1,60,'n_estimators')
 
+    #classifiers = random_forest_configs(abc)
     # Load data from dat file
     # unsupervised_technique(X_train, y_train, X_test, y_test, attack_cats)
 
 
     # Load data from dat file
     reset_data(reset_extended=reset_extended)
+    #X_train = normalize_data(X_train,'l2')
+    #X_test = normalize_data(X_test,'l2')
     X_total = X_train
     y_total = y_train
-
+    f = open('Accuracies.csv', 'w')
     for name, classifier in classifiers.items():
         accuracy = 0
         for train_index, test_index in kfold.split(X_total):
@@ -363,14 +377,19 @@ def main():
 
         total = accuracy / num_splits
         print "Accuracy of {} is {} %".format(name, round((total)*100, 5))
-
+        f.write(name)
+        f.write(',')
+        f.write(str(round((total)*100, 5)))
+        f.write('\n')
+    f.close()
 
     reset_data(reset_extended=reset_extended)
 
     # Use this loop for testing on test data
-    for name, classifier in classifiers.items():
-        y_test = execute_classifier(False, classifier)
-        write_predictions_to_file(name + '_output.csv.dat', y_test)
+    if not optimize_params:
+        for name, classifier in classifiers.items():
+            y_test = execute_classifier(False, classifier)
+            write_predictions_to_file(name + '_output.csv.dat', y_test)
 
 
 if __name__ == "__main__":
