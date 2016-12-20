@@ -13,6 +13,8 @@ from sklearn.neighbors import KNeighborsRegressor
 from sklearn.linear_model import LogisticRegression
 from sklearn import decomposition
 from sklearn.svm import SVC
+from sklearn.ensemble import ExtraTreesClassifier
+from sklearn.ensemble import AdaBoostClassifier
 
 attack_cats = []
 
@@ -162,20 +164,20 @@ def process_data(data):
             processed_data_inner.append(0)
 
         #### Rich Header ####
-        # times_used_array = []
-        # if check_json(json_obj, "rich_header"):
-        #     if check_json(json_obj["rich_header"], "values_parsed"):
-        #         for times_used in json_obj["rich_header"]["values_parsed"]:
-        #             times_used_array.append(times_used["times_used"])
-        #
-        #         if len(times_used_array) != 0:
-        #             processed_data_inner.append(sum(times_used_array) / float(len(times_used_array)))
-        #         else:
-        #             processed_data_inner.append(0)
-        #     else:
-        #         processed_data_inner.append(0)
-        # else:
-        #     processed_data_inner.append(0)
+        times_used_array = []
+        if check_json(json_obj, "rich_header"):
+            if check_json(json_obj["rich_header"], "values_parsed"):
+                for times_used in json_obj["rich_header"]["values_parsed"]:
+                    times_used_array.append(times_used["times_used"])
+
+                if len(times_used_array) != 0:
+                    processed_data_inner.append(sum(times_used_array) / float(len(times_used_array)))
+                else:
+                    processed_data_inner.append(0)
+            else:
+                processed_data_inner.append(0)
+        else:
+            processed_data_inner.append(0)
 
 
         #### Label ####
@@ -194,9 +196,14 @@ def process_train_test():
     global y_train
     global X_test
 
+    np.random.shuffle(X_train)
+
     last_col_index = X_train.shape[1] - 1
     y_train = X_train[:, last_col_index]  # Last column in labels
     X_train = np.delete(X_train, -1, 1)  # delete last column of xtrain
+
+    # X_train = normalize_data(X_train, "l22")
+    # X_test = normalize_data(X_test, "l22")
 
 
 def write_extended_features():
@@ -216,7 +223,6 @@ def write_extended_features():
     np.savetxt("data/training_extended.csv", np.asarray(X_train), delimiter=",",fmt='%.2f')
     np.savetxt("data/testing_extended.csv", np.asarray(X_test), delimiter=",",fmt='%.2f')
 
-    process_train_test()
 
 
 def reset_data(with_undersampling=True, reset_extended=True):
@@ -230,7 +236,7 @@ def reset_data(with_undersampling=True, reset_extended=True):
         X_train = np.load("data/training_extended_binary.npy")
         X_test = np.load("data/testing_extended_binary.npy")
 
-        process_train_test()
+    process_train_test()
 
 
 def import_data(train_mode):
@@ -344,6 +350,8 @@ def main():
     if not optimize_params:
     # Define "classifiers" to be used
         classifiers = {
+            "ADA Boost" : AdaBoostClassifier(n_estimators=500),
+            "Extra Trees" : ExtraTreesClassifier(n_estimators=28),
             "Random Forest": RandomForestClassifier(criterion="gini", n_estimators=32),
             "KNN Classifier": KNeighborsClassifier(n_neighbors=2, metric='minkowski', p = 2),
             "Logistic Regression": LogisticRegression(),
