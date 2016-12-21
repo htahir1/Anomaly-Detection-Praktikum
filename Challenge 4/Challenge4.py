@@ -15,8 +15,8 @@ from sklearn import decomposition
 from sklearn.svm import SVC
 from sklearn.ensemble import ExtraTreesClassifier
 from sklearn.ensemble import AdaBoostClassifier
-
-attack_cats = []
+from sklearn.neural_network import MLPClassifier
+from sklearn.preprocessing import StandardScaler
 
 X_train = []
 y_train = []
@@ -94,32 +94,34 @@ def process_data(data):
         processed_data_inner = []
         json_obj_orig = json_obj
 
+        # processed_data_inner.append(len(json_obj))  # Feature 0
+
         if check_json(json_obj, "results"):
             json_obj = json_obj["results"]["peinfo"]
         else:
             json_obj = json_obj["peinfo"]
 
         #### Number of Exports ####
-        if check_json(json_obj, "exports"):
+        if check_json(json_obj, "exports"):  # Feature 1
             processed_data_inner.append(len(json_obj["exports"]))
         else:
             processed_data_inner.append(0)
 
         #### Number of Imports ####
-        if check_json(json_obj, "imports"):
+        if check_json(json_obj, "imports"):  # Feature 2
             processed_data_inner.append(len(json_obj["imports"]))
         else:
             processed_data_inner.append(0)
 
         #### COMCTL32 ####
-        if check_json(json_obj, "imports"):
-            count = 0
-            for imports in json_obj["imports"]:
-               if imports["dll"] == "COMCTL32.dll":
-                   count += 1
-            processed_data_inner.append(count)
-        else:
-            processed_data_inner.append(0)
+        # if check_json(json_obj, "imports"):  # Feature 3
+        #     count = 0
+        #     for imports in json_obj["imports"]:
+        #        if imports["dll"] == "COMCTL32.dll":
+        #            count += 1
+        #     processed_data_inner.append(count)
+        # else:
+        #     processed_data_inner.append(0)
 
         #### PESECTIONS ####
         if check_json(json_obj, "pe_sections"):
@@ -128,9 +130,9 @@ def process_data(data):
             entropy_array = []
 
             for pe_section in json_obj["pe_sections"]:
-                size_array.append(pe_section["size"])
-                virt_size_array.append(pe_section["virt_size"])
-                entropy_array.append(pe_section["entropy"])
+                size_array.append(pe_section["size"])  # Feature 4
+                virt_size_array.append(pe_section["virt_size"])  # Feature 5
+                entropy_array.append(pe_section["entropy"])  # Feature 6
 
             if len(size_array) != 0:
                 processed_data_inner.append(sum(size_array) / float(len(size_array)))
@@ -152,13 +154,13 @@ def process_data(data):
             processed_data_inner.append(0)
 
         #### Pehash ####
-        if check_json(json_obj, "pehash"):
-            processed_data_inner.append(1)
-        else:
-            processed_data_inner.append(0)
+        # if check_json(json_obj, "pehash"):  # Feature 7
+        #     processed_data_inner.append(1)
+        # else:
+        #     processed_data_inner.append(0)
 
         #### Debug ####
-        if check_json(json_obj, "debug"):
+        if check_json(json_obj, "debug"):  # Feature 8
             processed_data_inner.append(1)
         else:
             processed_data_inner.append(0)
@@ -171,7 +173,7 @@ def process_data(data):
                     times_used_array.append(times_used["times_used"])
 
                 if len(times_used_array) != 0:
-                    processed_data_inner.append(sum(times_used_array) / float(len(times_used_array)))
+                    processed_data_inner.append(sum(times_used_array) / float(len(times_used_array)))  # Feature 9
                 else:
                     processed_data_inner.append(0)
             else:
@@ -204,6 +206,13 @@ def process_train_test():
 
     # X_train = normalize_data(X_train, "l22")
     # X_test = normalize_data(X_test, "l22")
+
+    scaler = StandardScaler()
+     # Don't cheat - fit only on training data
+    scaler.fit(X_train)
+    X_train = scaler.transform(X_train)
+     # apply same transformation to test data
+    X_test = scaler.transform(X_test)
 
 
 def write_extended_features():
@@ -261,10 +270,31 @@ def write_predictions_to_file(filename, data):
     f.close()
 
 
-def execute_classifier(use_training, clf):
+def execute_classifier(use_training, clf, feature_importance=False):
     clf.fit(X_train, y_train)
     predictions = clf.predict(X_test)
     predictions = np.round(predictions)
+
+    if feature_importance:
+        importances = clf.feature_importances_
+        std = np.std([tree.feature_importances_ for tree in clf.estimators_],
+                     axis=0)
+        indices = np.argsort(importances)[::-1]
+
+        # Print the feature ranking
+        print("Feature ranking:")
+
+        for f in range(X_train.shape[1]):
+            print("%d. feature %d (%f)" % (f + 1, indices[f], importances[indices[f]]))
+
+        # Plot the feature importances of the forest
+        plt.figure()
+        plt.title("Feature importances")
+        plt.bar(range(X_train.shape[1]), importances[indices],
+                color="r", yerr=std[indices], align="center")
+        plt.xticks(range(X_train.shape[1]), indices)
+        plt.xlim([-1, X_train.shape[1]])
+        plt.show()
 
     if not use_training:
         return predictions
@@ -315,6 +345,7 @@ def visualize_anomalies():
 
     plt.show()
 
+
 def generic_numeric(clf_name,clf,instance,min,max,element):
     classifier = {}
     for i in range(min,max):
@@ -335,12 +366,8 @@ def main():
     global y_train
     global y_test
 
-    reset_database = False
     reset_extended = False
     optimize_params = False
-
-    if reset_database:
-        dbSetup.setupDatabase()
 
     # visualize_anomalies()
 
@@ -350,16 +377,18 @@ def main():
     if not optimize_params:
     # Define "classifiers" to be used
         classifiers = {
-            "ADA Boost" : AdaBoostClassifier(n_estimators=500),
-            "Extra Trees" : ExtraTreesClassifier(n_estimators=28),
-            "Random Forest": RandomForestClassifier(criterion="gini", n_estimators=32),
-            "KNN Classifier": KNeighborsClassifier(n_neighbors=2, metric='minkowski', p = 2),
-            "Logistic Regression": LogisticRegression(),
-            "KNN Regressor": KNeighborsRegressor(n_neighbors=3),
-            "SVC" : SVC()
+            "ADA Boost" : AdaBoostClassifier(n_estimators=51),
+            "Extra Trees" : ExtraTreesClassifier(n_estimators=77),
+            "Random Forest": RandomForestClassifier(criterion="gini", n_estimators=51),
+            "MLP" : MLPClassifier()
+
+            # "KNN Classifier": KNeighborsClassifier(n_neighbors=5, metric='euclidean', p = 2),
+            # "Logistic Regression": LogisticRegression(),
+            # "KNN Regressor": KNeighborsRegressor(n_neighbors=5),
+            # "SVC" : SVC()
         }
     else:
-        classifiers = generic_numeric("RandomForest",RandomForestClassifier, RandomForestClassifier(criterion="entropy"),1,60,'n_estimators')
+        classifiers = generic_numeric("ExtraTreesClassifier",ExtraTreesClassifier, ExtraTreesClassifier(criterion="entropy"),1,100,'n_estimators')
 
     #classifiers = random_forest_configs(abc)
     # Load data from dat file
@@ -380,7 +409,7 @@ def main():
             X_train, X_test = X_total[train_index], X_total[test_index]
             y_train, y_test = y_total[train_index], y_total[test_index]
 
-            accuracy += execute_classifier(True, classifier)
+            accuracy += execute_classifier(True, classifier, feature_importance=False)
 
 
         total = accuracy / num_splits
@@ -391,12 +420,12 @@ def main():
         f.write('\n')
     f.close()
 
-    reset_data(reset_extended=reset_extended)
+    reset_data(reset_extended=False)
 
     # Use this loop for testing on test data
     if not optimize_params:
         for name, classifier in classifiers.items():
-            y_test = execute_classifier(False, classifier)
+            y_test = execute_classifier(False, classifier, feature_importance=False)
             write_predictions_to_file(name + '_output.csv.dat', y_test)
 
 
