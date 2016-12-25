@@ -17,12 +17,12 @@ from sklearn.ensemble import ExtraTreesClassifier
 from sklearn.ensemble import AdaBoostClassifier
 from sklearn.neural_network import MLPClassifier
 from sklearn.preprocessing import StandardScaler
-
+from sklearn.cluster import DBSCAN
 X_train = []
 y_train = []
 X_test = []
 y_test = []
-
+DLLs = []
 '''
     Helper functions
 '''
@@ -30,14 +30,14 @@ def undersample(data, how_many_extra_normal=0):
     new_data = []
     check_dict = {}
 
-    np.random.shuffle(data)
+    #np.random.shuffle(data)
 
     for i in range(0, np.shape(data)[0]):
         if data[i][np.shape(data)[1] - 1] == 1:
             new_data.append(data[i].tolist())
 
     size_of_anomalies = len(new_data)
-    
+
     break_while = True
     while(break_while):
         random_row_index = random.randint(0, np.shape(data)[0]-1)
@@ -46,9 +46,11 @@ def undersample(data, how_many_extra_normal=0):
                 new_data.append(data[random_row_index])
                 check_dict[random_row_index] = 1
 
-                if len(check_dict) == size_of_anomalies + how_many_extra_normal:
+                if (len(check_dict) == size_of_anomalies + how_many_extra_normal) or (len(check_dict) + size_of_anomalies == len(data)):
                     break_while = False
 
+    new_data = np.array(new_data)
+    np.random.shuffle(new_data)
     return np.array(new_data)
 
 
@@ -80,18 +82,33 @@ def normalize_data(x,mode):
         return ((x - np.amin(x, axis = 0)) / x.ptp(0))
 
 
-
 def check_json(json_obj, key):
     if key in json_obj and json_obj[key] != None:
         return True
     return False
 
 
+def get_import_dlls(data):
+    global DLLs
+    for json_obj in data:
+        if check_json(json_obj, "results"):
+            json_obj = json_obj["results"]["peinfo"]
+        else:
+            json_obj = json_obj["peinfo"]
+        if check_json(json_obj, "imports"):
+            for import_dll in json_obj["imports"]:
+               if import_dll["dll"] not in DLLs:
+                   DLLs.append(import_dll["dll"])
+
+    return DLLs
+
+
 def process_data(data):
     processed_data = []
-
+    global DLLs
     for json_obj in data:
         processed_data_inner = []
+
         json_obj_orig = json_obj
 
         # processed_data_inner.append(len(json_obj))  # Feature 0
@@ -113,15 +130,17 @@ def process_data(data):
         else:
             processed_data_inner.append(0)
 
-        #### COMCTL32 ####
-        # if check_json(json_obj, "imports"):  # Feature 3
-        #     count = 0
-        #     for imports in json_obj["imports"]:
-        #        if imports["dll"] == "COMCTL32.dll":
-        #            count += 1
-        #     processed_data_inner.append(count)
-        # else:
-        #     processed_data_inner.append(0)
+        #### All Training Data DLLs ####
+        if check_json(json_obj, "imports"):
+            count = [0]* len(DLLs)
+            for imports in json_obj["imports"]:
+                if imports["dll"] in DLLs:
+                   count[DLLs.index(imports["dll"])] += 1
+            for i in count:
+                processed_data_inner.append(i)
+        else:
+            for i in range(0,len(DLLs)):
+                processed_data_inner.append(0)
 
         #### PESECTIONS ####
         if check_json(json_obj, "pe_sections"):
@@ -154,10 +173,10 @@ def process_data(data):
             processed_data_inner.append(0)
 
         #### Pehash ####
-        # if check_json(json_obj, "pehash"):  # Feature 7
-        #     processed_data_inner.append(1)
-        # else:
-        #     processed_data_inner.append(0)
+        if check_json(json_obj, "pehash"):  # Feature 7
+            processed_data_inner.append(1)
+        else:
+            processed_data_inner.append(0)
 
         #### Debug ####
         if check_json(json_obj, "debug"):  # Feature 8
@@ -189,6 +208,8 @@ def process_data(data):
         processed_data.append(np.array(processed_data_inner))
 
     processed_data = np.array(processed_data)
+    print len(DLLs)
+    print DLLs
     print np.shape(processed_data)
     return processed_data
 
@@ -198,7 +219,7 @@ def process_train_test():
     global y_train
     global X_test
 
-    np.random.shuffle(X_train)
+    #np.random.shuffle(X_train)
 
     last_col_index = X_train.shape[1] - 1
     y_train = X_train[:, last_col_index]  # Last column in labels
@@ -207,22 +228,22 @@ def process_train_test():
     # X_train = normalize_data(X_train, "l22")
     # X_test = normalize_data(X_test, "l22")
 
-    scaler = StandardScaler()
+    #scaler = StandardScaler()
      # Don't cheat - fit only on training data
-    scaler.fit(X_train)
-    X_train = scaler.transform(X_train)
+    #scaler.fit(X_train)
+    #X_train = scaler.transform(X_train)
      # apply same transformation to test data
-    X_test = scaler.transform(X_test)
+    #X_test = scaler.transform(X_test)
 
 
 def write_extended_features():
     global X_train
     global y_train
     global X_test
-
+    global DLLs
     X_train = get_data(training=True)
     X_test = get_data(training=False)
-
+    DLLs = get_import_dlls(X_train)
     X_train = process_data(X_train)
     X_test = process_data(X_test)
 
@@ -231,7 +252,6 @@ def write_extended_features():
     np.save('data/testing_extended_binary.npy', X_test)
     np.savetxt("data/training_extended.csv", np.asarray(X_train), delimiter=",",fmt='%.2f')
     np.savetxt("data/testing_extended.csv", np.asarray(X_test), delimiter=",",fmt='%.2f')
-
 
 
 def reset_data(with_undersampling=True, reset_extended=True):
@@ -244,7 +264,8 @@ def reset_data(with_undersampling=True, reset_extended=True):
     else:
         X_train = np.load("data/training_extended_binary.npy")
         X_test = np.load("data/testing_extended_binary.npy")
-
+    if with_undersampling:
+        X_train = undersample(X_train)
     process_train_test()
 
 
@@ -368,6 +389,7 @@ def main():
 
     reset_extended = False
     optimize_params = False
+    undersample = True
 
     # visualize_anomalies()
 
@@ -377,28 +399,24 @@ def main():
     if not optimize_params:
     # Define "classifiers" to be used
         classifiers = {
-            "ADA Boost" : AdaBoostClassifier(n_estimators=51),
-            "Extra Trees" : ExtraTreesClassifier(n_estimators=77),
-            "Random Forest": RandomForestClassifier(criterion="gini", n_estimators=51),
-            "MLP" : MLPClassifier()
+            #"ADA Boost" : AdaBoostClassifier(n_estimators=51),
+            "Extra Trees" : ExtraTreesClassifier(n_estimators=59),
+            "Random Forest": RandomForestClassifier(criterion="gini", n_estimators=91),
 
-            # "KNN Classifier": KNeighborsClassifier(n_neighbors=5, metric='euclidean', p = 2),
-            # "Logistic Regression": LogisticRegression(),
-            # "KNN Regressor": KNeighborsRegressor(n_neighbors=5),
-            # "SVC" : SVC()
         }
     else:
         classifiers = generic_numeric("ExtraTreesClassifier",ExtraTreesClassifier, ExtraTreesClassifier(criterion="entropy"),1,100,'n_estimators')
+        #classifiers = generic_numeric("RandomForest",RandomForestClassifier,RandomForestClassifier(),1,100,'n_estimators')
 
-    #classifiers = random_forest_configs(abc)
     # Load data from dat file
     # unsupervised_technique(X_train, y_train, X_test, y_test, attack_cats)
 
 
     # Load data from dat file
-    reset_data(reset_extended=reset_extended)
-    #X_train = normalize_data(X_train,'l2')
-    #X_test = normalize_data(X_test,'l2')
+    reset_data(reset_extended=reset_extended,with_undersampling=undersample)
+    #X_train = normalize_data(X_train,'')
+    #X_test = normalize_data(X_test,'')
+
     X_total = X_train
     y_total = y_train
     f = open('Accuracies.csv', 'w')
@@ -420,14 +438,34 @@ def main():
         f.write('\n')
     f.close()
 
-    reset_data(reset_extended=False)
+    reset_data(reset_extended=False,with_undersampling=undersample)
 
     # Use this loop for testing on test data
     if not optimize_params:
-        for name, classifier in classifiers.items():
-            y_test = execute_classifier(False, classifier, feature_importance=False)
-            write_predictions_to_file(name + '_output.csv.dat', y_test)
+         for name, classifier in classifiers.items():
+             y_test = execute_classifier(False, classifier, feature_importance=False)
+             write_predictions_to_file(name + '_output.csv.dat', y_test)
 
 
 if __name__ == "__main__":
     main()
+
+
+            #"MLP500,250,10,100" : MLPClassifier(hidden_layer_sizes=(500,250,10,100)),
+            #"MLP500,10,500" : MLPClassifier(hidden_layer_sizes=(500,10,500),warm_start=True, beta_1=0.999, beta_2=0.9900),
+            #"MLP":MLPClassifier(batch_size=20, warm_start=True,beta_1=0.09, beta_2=0.09)
+            #"DBSCAN":DBSCAN()
+           # "MLPlogistic":MLPClassifier(hidden_layer_sizes=(500,100,10,2,500),activation='logistic',max_iter=1000),
+            # "MLPtanh":MLPClassifier(activation='tanh',max_iter=1000),
+            # "MLPidentity":MLPClassifier(activation='identity',max_iter=1000),
+            # Baseline Traning: Accuracy of MLP is 91.71597 %
+            # Accuracy of MLPlogistic is 87.8822 %
+            # Accuracy of MLPtanh is 90.93701 %
+            # Accuracy of MLP is 91.6445 %
+            # Accuracy of MLPidentity is 86.42633 %
+            # "KNN Classifier": KNeighborsClassifier(n_neighbors=5, metric='euclidean', p = 2),
+            # "Logistic Regression": LogisticRegression(),
+            # "KNN Regressor": KNeighborsRegressor(n_neighbors=5),
+            #"SVCsigmoid" : SVC(kernel='sigmoid',C=5.0),
+            #"SVCpoly":SVC(kernel='poly',degree= 2,C=3.0),
+            #"SVC" : SVC(C=3.0)
