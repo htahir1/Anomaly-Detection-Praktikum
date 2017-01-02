@@ -36,7 +36,7 @@
 %
 \section{Introduction}
 %
-This brief report serves as a purpose to present and explain the methodologies applied to tackle the fourth challenge in the Practical: Anomaly Detection Challenges. Section~2 discusses the challenge task and the data set for the machine learning/anomaly detection task. Section~3 explains the approaches adopted for the task.
+This brief report serves as a purpose to present and explain the methodologies applied to tackle the fourth challenge in the Practical: Anomaly Detection Challenges. Section~2 discusses the challenge task and the data set for the machine learning/anomaly detection task. Section~3 explains the approaches adopted for the task, and Section~4 summarizes the results.
 %
 \section{The Challenge}
 %
@@ -66,7 +66,7 @@ The dataset consists of PEinfo files. There are 9,743 records in the training se
 This section explains the data analysis and the machine learning process to build the model for classifying the given samples as attack  or normal record. 
 
 \subsection{Feature Extraction}
-The Idataset was treated for feature extraction, and the following features were extracted for the machine learning process:
+Our approach was to first manually analyze around 40 samples of malicious and benign files to diffrentiate and identify relevant discriminatory features between them. The following features were extracted for the machine learning process:
 \begin{enumerate}
 	\item Number of Exports
 	\item Number of Imports
@@ -76,32 +76,47 @@ The Idataset was treated for feature extraction, and the following features were
 	\item Debug
 \end{enumerate}
 
-\subsubsection{Number of Exports}
+\subsubsection{Number of Exports:}
 This feature represents count of the number of functions exported in a PEinfo sample. 
+\paragraph{Reasoning:}
+In our manual analysis, we noted that malicious files had a lot less exports (usually even 0 exports) than benign files.
 
 \subsubsection{Number of Imports}
-This feature represents count of the number of functions imported from various DLLs in a PEinfo sample. 
+This feature represents count of the number of functions imported in a PEinfo sample. 
+\paragraph{Reasoning:}
+In our manual analysis, we noted that malicious files had less imports than benign files.
 
 \subsubsection{DLLs}
-This feature represents count of different DLLs in a PEinfo sample. Only DLLs of training samples are used for this feature. The feature is a sparse matric, represented as a bag of words like representation. 
+This feature represents count of different DLLs in a PEinfo sample. Only DLLs of training samples are used for this feature. The feature is a sparse matrix, represented as a bag of words like representation. 
 There are 10XX columns used to represent count (in case of presence), and 0 (in case of absence) of each DLL in a data point.
+\paragraph{Reasoning:}
+In our manual analysis, we noted that some malicious files had certain identifying DLL's like "COMCTL32.dll" which were not present in the benign files. Therefore, a bag of words representation seemed appropriate to capture this information.
 
 \subsubsection{PE Sections}
-This feature represents data-point averages in case of presence, and 0 in case of absense of:
+This feature represents data-point averages in case of presence, and 0 in case of absence of:
 \begin{enumerate}
 	\item Size
 	\item Virtual Size
 	\item Entropy
 \end {enumerate}
-In the PE Section of a data point.
+within the PE section of a sample.
+\paragraph{Reasoning:}
+In our manual analysis, we noted that some malicious files had higher average values of these values than benign ones.
+
 \subsubsection{PE Hash}
 This feature presence or absence of PE Hash section in a data point.
+\paragraph{Reasoning:}
+In our manual analysis, we noted that some malicious files had this section missing and most benign files had it present.
 
 \subsubsection{Debug}
 This feature represents presence or absence of debug section in a data point.
-The  features extracted have the following class wise arrangement:
+\paragraph{Reasoning:}
+In our manual analysis, we noted that some malicious files had this section missing and most benign files had it present.
 
-\begin{table}
+\paragraph{}
+The features extracted have the following class wise arrangement:
+
+\begin{table}[h]
 	\centering
 	\caption{Representation Accross Classes}
 	\begin{tabular}{ |p{5cm}||p{3cm}||p{3cm}|}
@@ -151,10 +166,15 @@ To build a robust classifier, that is relatively general and is not restricted o
 
 \section{Results}
 Results of the challenge are summarized in this section. We present results based upon training accuracies only. The results presented are achieved after feature scaling and random re-sampling and ten-fold cross validation. 
+The optimal value of number of estimaters for random forests is found to be:\\
+Results of the challenge are summarized in this section. We present results based upon training accuracies only. The results presented are achieved after feature scaling and random re-sampling and ten-fold cross validation. 
+The optimal value of number of estimaters for random forests is found to be:
+The optimal value of number of estimaters for extra trees is found to be:
+Results of the challenge are summarized in this section. We present results based upon training accuracies only. The results presented are achieved after feature scaling and random re-sampling and ten-fold cross validation. 
 The optimal value of number of estimaters for random forests is found to be:
 The optimal value of number of estimaters for extra trees is found to be:
 
-\begin{table}
+\begin{table}[h]
 	\centering
 	\caption{Best Average Cross-Validation Accuracies}
 	\begin{tabular}{ |p{3cm}||p{3cm}||p{3cm}|}
