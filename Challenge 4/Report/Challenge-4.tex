@@ -66,15 +66,22 @@ The dataset consists of PEinfo files. There are 9,743 records in the training se
 This section explains the data analysis and the machine learning process to build the model for classifying the given samples as attack  or normal record. 
 
 \subsection{Feature Extraction}
-Our approach was to first manually analyze around 40 samples of malicious and benign files to diffrentiate and identify relevant discriminatory features between them. The following features were extracted for the machine learning process:
+Our approach was to first manually analyze around 40 samples of malicious and benign files to differentiate and identify relevant discriminatory features between them. The following features were extracted for the machine learning process:
 \begin{enumerate}
+	\item Size of sample
 	\item Number of Exports
 	\item Number of Imports
 	\item DLLs 
 	\item PE Sections
 	\item PE hash
 	\item Debug
+	\item Rich Header
 \end{enumerate}
+
+\subsubsection{Size of sample:}
+This feature represents simply the length in terms of characters in the json encoding of each dataset.  
+\paragraph{Reasoning:}
+In our manual analysis, we noted that malicious files sometimes had lesser length than benign files. 
 
 \subsubsection{Number of Exports:}
 This feature represents count of the number of functions exported in a PEinfo sample. 
@@ -93,7 +100,7 @@ There are 10XX columns used to represent count (in case of presence), and 0 (in 
 In our manual analysis, we noted that some malicious files had certain identifying DLL's like "COMCTL32.dll" which were not present in the benign files. Therefore, a bag of words representation seemed appropriate to capture this information.
 
 \subsubsection{PE Sections}
-This feature represents data-point averages in case of presence, and 0 in case of absence of:
+This feature represents data-point average/max in case of presence, and -1 in case of absence of:
 \begin{enumerate}
 	\item Size
 	\item Virtual Size
@@ -110,6 +117,11 @@ In our manual analysis, we noted that some malicious files had this section miss
 
 \subsubsection{Debug}
 This feature represents presence or absence of debug section in a data point.
+\paragraph{Reasoning:}
+In our manual analysis, we noted that some malicious files had this section missing and most benign files had it present.
+
+\subsubsection{Rich Header}
+We took an average/max of the "Times Used" value, if present. 
 \paragraph{Reasoning:}
 In our manual analysis, we noted that some malicious files had this section missing and most benign files had it present.
 
@@ -162,27 +174,36 @@ To build a robust classifier, that is relatively general and is not restricted o
 
 \subsubsection{Ten-fold Cross Validation:} Ten-fold cross validation was used to overcome the problem of over-fitting, and to build a model to that will generalize to an independent dataset, Hawkins et. al. The ten-fold cross validation scores were used to optimize hyper parameters(see \cite{hawkins:eke}). 
 
-\subsubsection{Optimizing for Hyperparameters:} Most  of the chosen classification techniques require to tune and choose hyperparameters, because good results were yielded via random forests \& extra trees classifiers, the authors chose to tune the these techniques. For optimizing all hyperparameter configurations were tested. The classifiers were evaluated on the ten fold cross validation scores and on overlapping and partition set based crossvalidation approaches.\& .  
+\subsubsection{Optimizing for Hyper-parameters:} Most  of the chosen classification techniques require to tune and choose hyper-parameters, because good results were yielded via random forests \& extra trees classifiers, the authors chose to tune the these techniques. For optimizing all hyper-parameter configurations were tested. The classifiers were evaluated on the ten fold cross validation scores and on overlapping and partition set based cross validation approaches.
+
+\subsection{Feature Importance}
+We utilized the feature of our Tree classifier that inherently classifies the importance of each feature. The higher the feature in the tree, the more important the feature. The importance of a feature is computed as the (normalized) total reduction of the criterion brought by that feature. It is also known as the Gini/Entropy importance.\\
+Figure 1 shows the relative importance of the feature when evaluating for test accuracies. It can be seen clearly that for both Random Forest and Extra Trees, "pehash" and "size of sample" features are not that important. We therefore decided to discard these features for our final analysis.\\
+The results that we have showcased in the next section are based on the removal of these 0 importance features. We found a slight improvement in the test accuracies when we did remove these features from our classification. 
+
+\begin{figure}[h]
+	\includegraphics[width=6cm]{random_forest_feature_importances}
+	\includegraphics[width=6cm]{extra_trees_feature_importances}
+	\centering
+	\caption{Visualizing the relative importance of features using tree classifiers}
+\end{figure}
 
 \section{Results}
-Results of the challenge are summarized in this section. We present results based upon training accuracies only. The results presented are achieved after feature scaling and random re-sampling and ten-fold cross validation. 
-The optimal value of number of estimaters for random forests is found to be:\\
-Results of the challenge are summarized in this section. We present results based upon training accuracies only. The results presented are achieved after feature scaling and random re-sampling and ten-fold cross validation. 
-The optimal value of number of estimaters for random forests is found to be:
-The optimal value of number of estimaters for extra trees is found to be:
-Results of the challenge are summarized in this section. We present results based upon training accuracies only. The results presented are achieved after feature scaling and random re-sampling and ten-fold cross validation. 
-The optimal value of number of estimaters for random forests is found to be:
-The optimal value of number of estimaters for extra trees is found to be:
+Results of the challenge are summarized in this section. We present results based upon training accuracies only. The results presented are achieved after feature scaling and random re-sampling and ten-fold cross validation. \\
+Again, we report that Random Forest turned out to give the best accuracy. The authors tried their best to tune the Multi-Layer Perceptron to work, but could not quite achieve the accuracy of RF. One conclusion we can draw from the challenges so far is that Random Forest is an extremely robust and generic classifier that works really well in a lot of tasks. \\
+We were also quite pleased with the overall accuracy achieved by our experiments. The features that we have extracted proved to be largely effective in distinguishing between the classes. Perhaps the subset of data provided to us was particularly easy to separate into these two classes, explaining the freakishly high accuracies achieved. \\\\\\\\
+The optimal value of number of estimators for random forests is found to be: \textbf{93}\\
+The optimal value of number of estimators for extra trees is found to be: \textbf{59}\\\\
 
 \begin{table}[h]
 	\centering
 	\caption{Best Average Cross-Validation Accuracies}
-	\begin{tabular}{ |p{3cm}||p{3cm}||p{3cm}|}
+	\begin{tabular}{ |p{5cm}||p{3cm}||p{3cm}|}
 		\hline
 		Technique                  &Cross Validation Accuracy & Testing Accuracy(Public Score)\\
 		\hline
-		Random Forest              								&91.347 &97.978\\
-		Extra Trees													&96.33 &97.542\\
+		Random Forest              								&97.242 &98.243\\
+		Extra Trees													&96.33 & 97.901\\
 		Multi Layer Perceptron(1 layer)	 			  		&92.75 &93.95\\
 		Multi Layer Perceptron(3 layers)	 			  &93.67 &94.4\\
 		Multi Layer Perceptron(4 layers)	 			  &93.66 &94.53\\

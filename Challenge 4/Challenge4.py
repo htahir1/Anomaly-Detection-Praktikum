@@ -23,6 +23,16 @@ y_train = []
 X_test = []
 y_test = []
 DLLs = []
+feature_names = []
+# feature_names.append("Size of sample")     # 0
+feature_names.append("# of Exports")       # 1
+feature_names.append("# of Imports")       # 2
+feature_names.append("PEsecs(Size)")       # 3
+feature_names.append("PESecs(VirtSize)")   # 4
+feature_names.append("PESecs(Entropy)")    # 5
+# feature_names.append("pehash")             # 6
+feature_names.append("debug")              # 7
+feature_names.append("rich_header")        # 8
 '''
     Helper functions
 '''
@@ -97,8 +107,8 @@ def get_import_dlls(data):
             json_obj = json_obj["peinfo"]
         if check_json(json_obj, "imports"):
             for import_dll in json_obj["imports"]:
-               if import_dll["dll"] not in DLLs:
-                   DLLs.append(import_dll["dll"])
+               if import_dll["dll"].lower() not in DLLs:
+                   DLLs.append(import_dll["dll"].lower())
 
     return DLLs
 
@@ -106,6 +116,10 @@ def get_import_dlls(data):
 def process_data(data):
     processed_data = []
     global DLLs
+    global feature_names
+
+
+
     for json_obj in data:
         processed_data_inner = []
 
@@ -131,16 +145,16 @@ def process_data(data):
             processed_data_inner.append(0)
 
         #### All Training Data DLLs ####
-        if check_json(json_obj, "imports"):
-            count = [0]* len(DLLs)
-            for imports in json_obj["imports"]:
-                if imports["dll"] in DLLs:
-                   count[DLLs.index(imports["dll"])] += 1
-            for i in count:
-                processed_data_inner.append(i)
-        else:
-            for i in range(0,len(DLLs)):
-                processed_data_inner.append(0)
+        # if check_json(json_obj, "imports"):
+        #     count = [0]* len(DLLs)
+        #     for imports in json_obj["imports"]:
+        #         if imports["dll"].lower() in DLLs:
+        #            count[DLLs.index(imports["dll"].lower())] += 1
+        #     for i in count:
+        #         processed_data_inner.append(i)
+        # else:
+        #     for i in range(0,len(DLLs)):
+        #         processed_data_inner.append(0)
 
         #### PESECTIONS ####
         if check_json(json_obj, "pe_sections"):
@@ -154,29 +168,29 @@ def process_data(data):
                 entropy_array.append(pe_section["entropy"])  # Feature 6
 
             if len(size_array) != 0:
-                processed_data_inner.append(sum(size_array) / float(len(size_array)))
+                processed_data_inner.append(max(size_array))
             else:
                 processed_data_inner.append(0)
 
             if len(virt_size_array) != 0:
-                processed_data_inner.append(sum(virt_size_array) / float(len(virt_size_array)))
+                processed_data_inner.append(max(virt_size_array))
             else:
-                processed_data_inner.append(0)
+                processed_data_inner.append(-1)
 
             if len(entropy_array) != 0:
-                processed_data_inner.append(sum(entropy_array) / float(len(entropy_array)))
+                processed_data_inner.append(max(entropy_array))
             else:
-                processed_data_inner.append(0)
+                processed_data_inner.append(-1)
         else:
-            processed_data_inner.append(0)
-            processed_data_inner.append(0)
-            processed_data_inner.append(0)
+            processed_data_inner.append(-1)
+            processed_data_inner.append(-1)
+            processed_data_inner.append(-1)
 
-        #### Pehash ####
-        if check_json(json_obj, "pehash"):  # Feature 7
-            processed_data_inner.append(1)
-        else:
-            processed_data_inner.append(0)
+        # ### Pehash ####
+        # if check_json(json_obj, "pehash"):  # Feature 7
+        #     processed_data_inner.append(1)
+        # else:
+        #     processed_data_inner.append(0)
 
         #### Debug ####
         if check_json(json_obj, "debug"):  # Feature 8
@@ -192,13 +206,13 @@ def process_data(data):
                     times_used_array.append(times_used["times_used"])
 
                 if len(times_used_array) != 0:
-                    processed_data_inner.append(sum(times_used_array) / float(len(times_used_array)))  # Feature 9
+                    processed_data_inner.append(max(times_used_array))  # Feature 9
                 else:
-                    processed_data_inner.append(0)
+                    processed_data_inner.append(-1)
             else:
-                processed_data_inner.append(0)
+                processed_data_inner.append(-1)
         else:
-            processed_data_inner.append(0)
+            processed_data_inner.append(-1)
 
 
         #### Label ####
@@ -291,7 +305,11 @@ def write_predictions_to_file(filename, data):
     f.close()
 
 
-def execute_classifier(use_training, clf, feature_importance=False):
+def execute_classifier(use_training, clf, name, feature_importance=False):
+    global feature_names
+
+    print "Beginning evaluation of: " + name
+
     clf.fit(X_train, y_train)
     predictions = clf.predict(X_test)
     predictions = np.round(predictions)
@@ -306,11 +324,16 @@ def execute_classifier(use_training, clf, feature_importance=False):
         print("Feature ranking:")
 
         for f in range(X_train.shape[1]):
-            print("%d. feature %d (%f)" % (f + 1, indices[f], importances[indices[f]]))
+            print("%d. feature %s (%f)" % (f + 1, feature_names[indices[f]], importances[indices[f]]))
 
+        test = []
+        for f in range(X_train.shape[1]):
+            test.append(indices[f])
+
+        print indices
         # Plot the feature importances of the forest
         plt.figure()
-        plt.title("Feature importances")
+        plt.title("Feature importances (" + name + ")")
         plt.bar(range(X_train.shape[1]), importances[indices],
                 color="r", yerr=std[indices], align="center")
         plt.xticks(range(X_train.shape[1]), indices)
@@ -393,20 +416,20 @@ def main():
 
     # visualize_anomalies()
 
-    num_splits = 10
+    num_splits = 5
 
     kfold = KFold(n_splits=num_splits)
     if not optimize_params:
     # Define "classifiers" to be used
         classifiers = {
             #"ADA Boost" : AdaBoostClassifier(n_estimators=51),
-            "Extra Trees" : ExtraTreesClassifier(n_estimators=59),
-            "Random Forest": RandomForestClassifier(criterion="gini", n_estimators=91),
+            "Extra Trees" : ExtraTreesClassifier(n_estimators=35),
+            "Random Forest": RandomForestClassifier(criterion="gini", n_estimators=35),
 
         }
     else:
         classifiers = generic_numeric("ExtraTreesClassifier",ExtraTreesClassifier, ExtraTreesClassifier(criterion="entropy"),1,100,'n_estimators')
-        #classifiers = generic_numeric("RandomForest",RandomForestClassifier,RandomForestClassifier(),1,100,'n_estimators')
+        classifiers = generic_numeric("RandomForest",RandomForestClassifier,RandomForestClassifier(),1,100,'n_estimators')
 
     # Load data from dat file
     # unsupervised_technique(X_train, y_train, X_test, y_test, attack_cats)
@@ -427,7 +450,7 @@ def main():
             X_train, X_test = X_total[train_index], X_total[test_index]
             y_train, y_test = y_total[train_index], y_total[test_index]
 
-            accuracy += execute_classifier(True, classifier, feature_importance=False)
+            accuracy += execute_classifier(True, classifier, name, feature_importance=False)
 
 
         total = accuracy / num_splits
@@ -443,7 +466,7 @@ def main():
     # Use this loop for testing on test data
     if not optimize_params:
          for name, classifier in classifiers.items():
-             y_test = execute_classifier(False, classifier, feature_importance=False)
+             y_test = execute_classifier(False, classifier, name, feature_importance=False)
              write_predictions_to_file(name + '_output.csv.dat', y_test)
 
 
