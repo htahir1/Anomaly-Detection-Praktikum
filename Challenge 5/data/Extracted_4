@@ -1,0 +1,10 @@
+{
+   "label":"malicious",
+   "results":{
+      "sha256":"1e71f89980bf3c02a0aa37712530383e73a2e4585ae94f0bb560dce74122832f",
+      "peinfo":{
+         "error":"Traceback (most recent call last):\n  File \"peinfo.py\", line 494, in get\n    data = PEInfoRun(fullPath)\n  File \"peinfo.py\", line 450, in PEInfoRun\n    data[\"pehash\"] = _get_pehash(pe)\n  File \"peinfo.py\", line 42, in _get_pehash\n    img_chars_xor = img_chars[0:7] ^ img_chars[8:15]\n  File \"/usr/local/lib/python2.7/site-packages/bitstring.py\", line 1130, in __xor__\n    raise ValueError(\"Bitstrings must have the same length \"\nValueError: Bitstrings must have the same length for ^ operator.\n"
+      }
+   },
+   "sha256":"1e71f89980bf3c02a0aa37712530383e73a2e4585ae94f0bb560dce74122832f"
+}
