@@ -14,6 +14,7 @@ from sklearn.svm import SVC
 from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import DBSCAN
 from sklearn.cluster import KMeans
+from sklearn.cluster import AffinityPropagation
 from sklearn.decomposition import PCA
 from mpl_toolkits.mplot3d import Axes3D
 
@@ -401,13 +402,14 @@ def generic_numeric(clf_name,clf,instance,min,max,element):
 
 def cluster_data(mode_is_training,clf, name, feature_importance ):
     clf.warm_start = True
-    clf.fit(X_train)
-
     if mode_is_training:
+        clf.fit(X_train)
         return clf.labels_
-    else:
 
-        return clf.predict
+    else:
+        clf.fit(X_test)
+        return clf.labels_
+
 
 def write_clusters_to_file(filename, clusters):
     f = open(filename, 'w')
@@ -443,32 +445,57 @@ def main():
     remove_benign = True
 
     reset_data(reset_extended=reset_extended,with_undersampling=undersample,remove_benign=remove_benign)
-    pca = PCA(n_components = 3)
-    X_train = pca.fit_transform(X_train)
+    #pca = PCA(n_components = 3)
+    #X_train = pca.fit_transform(X_train)
     print X_train.shape
 
-    clustering = {"Kmeans": KMeans(n_clusters=10, random_state=0, max_iter=3000)}
+    clustering = {#"Kmeans": KMeans(n_clusters=2, random_state=0, max_iter=3000),
+                  "DBSScan": DBSCAN()#,
+                  #"AffinityPropagation": AffinityPropagation()
+     }
     for name, cluster in clustering.items():
-           Clusters_Train =  cluster_data(True, cluster, name, feature_importance = False)
+            Clusters_Train =  cluster_data(True, cluster, name, feature_importance = False)
+            print Clusters_Train.shape
+            pca = PCA(n_components = 3)
+            X_train = pca.fit_transform(X_train)
+            fig = plt.figure(1, figsize=(8, 6))
+            ax = Axes3D(fig, elev=-150, azim=110)
+            ax.scatter(X_train[:, 0], X_train[:, 1], X_train[:, 2], s=30,c= Clusters_Train)
+            ax.set_title("First three PCA directions - TRAIN")
+            ax.set_xlabel("1st eigenvector")
+            ax.w_xaxis.set_ticklabels([])
+            ax.set_ylabel("2nd eigenvector")
+            ax.w_yaxis.set_ticklabels([])
+            ax.set_zlabel("3rd eigenvector")
+            ax.w_zaxis.set_ticklabels([])
+            #plt.scatter(X_train[:, 0], X_train[:, 1],s=30, c= Clusters_Train)
+            #plt.xlabel('1st Eigen Value')
+            #plt.ylabel('2nd Eigen Value')
+            #plt.zlabel('3rd Eigen Value')
+            plt.show()
+            #write_clusters_to_file('DBSCAN_Train.csv', Clusters_Train)
 
-    fig = plt.figure(1, figsize=(8, 6))
-    ax = Axes3D(fig, elev=-150, azim=110)
-    ax.scatter(X_train[:, 0], X_train[:, 1], X_train[:, 2], s=30,c= Clusters_Train)
-    ax.set_title("First three PCA directions")
-    ax.set_xlabel("1st eigenvector")
-    ax.w_xaxis.set_ticklabels([])
-    ax.set_ylabel("2nd eigenvector")
-    ax.w_yaxis.set_ticklabels([])
-    ax.set_zlabel("3rd eigenvector")
-    ax.w_zaxis.set_ticklabels([])
-    #plt.scatter(X_train[:, 0], X_train[:, 1],s=30, c= Clusters_Train)
-    #plt.xlabel('1st Eigen Value')
-    #plt.ylabel('2nd Eigen Value')
-    #plt.zlabel('3rd Eigen Value')
-    plt.show()
-    write_clusters_to_file('Test.csv', Clusters_Train)
+            Clusters_Test =  cluster_data(False, cluster, name, feature_importance = False)
+            print Clusters_Test.shape
+            pca = PCA(n_components = 3)
+            X_test = pca.fit_transform(X_test)
+            fig = plt.figure(1, figsize=(8, 6))
+            ax = Axes3D(fig, elev=-150, azim=110)
+            ax.scatter(X_test[:, 0], X_test[:, 1], X_test[:, 2], s=30,c= Clusters_Test)
+            ax.set_title("First three PCA directions- TEST")
+            ax.set_xlabel("1st eigenvector")
+            ax.w_xaxis.set_ticklabels([])
+            ax.set_ylabel("2nd eigenvector")
+            ax.w_yaxis.set_ticklabels([])
+            ax.set_zlabel("3rd eigenvector")
+            ax.w_zaxis.set_ticklabels([])
+            #plt.scatter(X_train[:, 0], X_train[:, 1],s=30, c= Clusters_Train)
+            #plt.xlabel('1st Eigen Value')
+            #plt.ylabel('2nd Eigen Value')
+            #plt.zlabel('3rd Eigen Value')
+            plt.show()
+            write_clusters_to_file('DBSCAN_Test.csv', Clusters_Test)
 
-    reset_data(reset_extended=False,with_undersampling=undersample)
 
     # Use this loop for testing on test data
 
