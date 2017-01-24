@@ -1,21 +1,13 @@
 from __future__ import division
 
-from sklearn.model_selection import KFold
 import random
 import json
 import dbSetup
+from ObjDumpHandler import ObjDumpHandler
 import numpy as np
-from sklearn.neighbors import KNeighborsClassifier
 from sklearn.preprocessing import normalize
 import matplotlib.pyplot as plt
-from sklearn.neighbors import KNeighborsRegressor
 from sklearn import decomposition
-from sklearn.svm import SVC
-from sklearn.preprocessing import StandardScaler
-from sklearn.cluster import DBSCAN
-from sklearn.cluster import KMeans
-from sklearn.decomposition import PCA
-from mpl_toolkits.mplot3d import Axes3D
 
 X_train = []
 y_train = []
@@ -32,6 +24,8 @@ feature_names.append("PESecs(Entropy)")    # 5
 # feature_names.append("pehash")             # 6
 feature_names.append("debug")              # 7
 feature_names.append("rich_header")        # 8
+
+
 '''
     Helper functions
 '''
@@ -435,43 +429,46 @@ def main():
     global X_test
     global y_train
     global y_test
+    global objdumphandler
 
-    reset_extended = False
-    optimize_params = False
-    undersample = False
-    clustering = True
-    remove_benign = True
-
-    reset_data(reset_extended=reset_extended,with_undersampling=undersample,remove_benign=remove_benign)
-    pca = PCA(n_components = 3)
-    X_train = pca.fit_transform(X_train)
-    print X_train.shape
-
-    clustering = {"Kmeans": KMeans(n_clusters=10, random_state=0, max_iter=3000)}
-    for name, cluster in clustering.items():
-           Clusters_Train =  cluster_data(True, cluster, name, feature_importance = False)
-
-    fig = plt.figure(1, figsize=(8, 6))
-    ax = Axes3D(fig, elev=-150, azim=110)
-    ax.scatter(X_train[:, 0], X_train[:, 1], X_train[:, 2], s=30,c= Clusters_Train)
-    ax.set_title("First three PCA directions")
-    ax.set_xlabel("1st eigenvector")
-    ax.w_xaxis.set_ticklabels([])
-    ax.set_ylabel("2nd eigenvector")
-    ax.w_yaxis.set_ticklabels([])
-    ax.set_zlabel("3rd eigenvector")
-    ax.w_zaxis.set_ticklabels([])
-    #plt.scatter(X_train[:, 0], X_train[:, 1],s=30, c= Clusters_Train)
-    #plt.xlabel('1st Eigen Value')
-    #plt.ylabel('2nd Eigen Value')
-    #plt.zlabel('3rd Eigen Value')
-    plt.show()
-    write_clusters_to_file('Test.csv', Clusters_Train)
-
-    reset_data(reset_extended=False,with_undersampling=undersample)
+    # reset_extended = False
+    # optimize_params = False
+    # undersample = False
+    # clustering = True
+    # remove_benign = True
+    #
+    # reset_data(reset_extended=reset_extended,with_undersampling=undersample,remove_benign=remove_benign)
+    # pca = PCA(n_components = 3)
+    # X_train = pca.fit_transform(X_train)
+    # print X_train.shape
+    #
+    # clustering = {"Kmeans": KMeans(n_clusters=10, random_state=0, max_iter=3000)}
+    # for name, cluster in clustering.items():
+    #        Clusters_Train =  cluster_data(True, cluster, name, feature_importance = False)
+    #
+    # fig = plt.figure(1, figsize=(8, 6))
+    # ax = Axes3D(fig, elev=-150, azim=110)
+    # ax.scatter(X_train[:, 0], X_train[:, 1], X_train[:, 2], s=30,c= Clusters_Train)
+    # ax.set_title("First three PCA directions")
+    # ax.set_xlabel("1st eigenvector")
+    # ax.w_xaxis.set_ticklabels([])
+    # ax.set_ylabel("2nd eigenvector")
+    # ax.w_yaxis.set_ticklabels([])
+    # ax.set_zlabel("3rd eigenvector")
+    # ax.w_zaxis.set_ticklabels([])
+    # #plt.scatter(X_train[:, 0], X_train[:, 1],s=30, c= Clusters_Train)
+    # #plt.xlabel('1st Eigen Value')
+    # #plt.ylabel('2nd Eigen Value')
+    # #plt.zlabel('3rd Eigen Value')
+    # plt.show()
+    # write_clusters_to_file('Test.csv', Clusters_Train)
+    #
+    # reset_data(reset_extended=False,with_undersampling=undersample)
 
     # Use this loop for testing on test data
 
+    objdumphandler = ObjDumpHandler("data/malicious_objdump_40000")
+    objdumphandler.parse_file()
 
 
 if __name__ == "__main__":
