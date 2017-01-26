@@ -1,14 +1,12 @@
 from __future__ import division
 
-from sklearn.model_selection import KFold
 import random
 import json
 import dbSetup
+from ObjDumpHandler import ObjDumpHandler
 import numpy as np
-from sklearn.neighbors import KNeighborsClassifier
 from sklearn.preprocessing import normalize
 import matplotlib.pyplot as plt
-from sklearn.neighbors import KNeighborsRegressor
 from sklearn import decomposition
 from sklearn.svm import SVC
 from sklearn.preprocessing import StandardScaler
@@ -18,6 +16,7 @@ from sklearn.cluster import AffinityPropagation
 from sklearn.decomposition import PCA
 from mpl_toolkits.mplot3d import Axes3D
 import csv
+
 X_train = []
 y_train = []
 X_test = []
@@ -33,6 +32,8 @@ feature_names.append("PESecs(Entropy)")    # 5
 # feature_names.append("pehash")             # 6
 feature_names.append("debug")              # 7
 feature_names.append("rich_header")        # 8
+
+
 '''
     Helper functions
 '''
@@ -505,8 +506,8 @@ def main():
             write_clusters_to_file(name+'_Train.csv', Clusters_Train)
             print "Train Done"
 
-    # Use this loop for testing on test data
-
+    objdumphandler = ObjDumpHandler("data/malicious_objdump_40000")
+    objdumphandler.parse_file()
 
 
 if __name__ == "__main__":
