@@ -2,7 +2,7 @@ import json
 import numpy as np
 
 class ObjDumpHandler(object):
-    def __init__(self, path, reset=False):
+    def __init__(self, path, reset=True):
         self.path = path
         self.inverted_index = {}
         self.reset = reset
@@ -23,7 +23,6 @@ class ObjDumpHandler(object):
 
         if self.reset:
             self.get_old_sha256()
-            i = 0
             with open(self.path, 'r') as f:
                 for row in f:
                     json_obj = json.loads(row)
@@ -46,8 +45,7 @@ class ObjDumpHandler(object):
                                     self.inverted_index[sha256][opcode] += 1
 
                             if sha256 not in sha256_dict:
-                                sha256_dict[i] = sha256
-                                i += 1
+                                sha256_dict.append(sha256)
                             print sha256
                         else:
                             print "Was not in old dict: " + sha256
