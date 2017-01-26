@@ -9,13 +9,16 @@ class ObjDumpHandler(object):
         self.old_sha256_dict = {}
 
     def get_old_sha256(self):
-        matched_sha256_file = open('DBScan_Total.csv', 'r')
+        matched_sha256_file = open('DBSScan_Train.csv', 'r')
         for row in matched_sha256_file:
-            if row not in self.old_sha256_dict:
-                self.old_sha256_dict[row] = 1
+            s = row[:-3]
+            print s
+            if s not in self.old_sha256_dict:
+                self.old_sha256_dict[s] = 1
 
 
     def parse_file(self):
+        sha256_dict = {}
         opcode_master = []
         self.get_old_sha256()
         if self.reset:
@@ -39,7 +42,7 @@ class ObjDumpHandler(object):
                                     self.inverted_index[sha256][opcode] = 1
                                 else:
                                     self.inverted_index[sha256][opcode] += 1
-
+                            sha256_dict[sha256] = 1
                             print sha256
                         else:
                             print "Was not in old dict: " + sha256
@@ -62,5 +65,7 @@ class ObjDumpHandler(object):
             np.savetxt("data/malicious_inverted_index_opcode.csv", np.asarray(data), delimiter=",",fmt='%.2f')
         else:
             data = np.load("data/malicious_inverted_index_opcode.npy")
-            print data
+
+        return sha256_dict, data
+
 

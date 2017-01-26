@@ -444,6 +444,20 @@ def write_clusters_to_file(filename, clusters):
     print i
     f.close()
 
+
+def write_clusters_to_file(filename, clusters, sha256):
+    f = open(filename, 'w')
+    f.write('sha256,cluster\n')
+    i = 0
+    #print filename
+    for row in sha256:
+        f.write('%s' % row)
+        f.write(',')
+        f.write('%s' % clusters[i])
+        f.write('\n')
+        i = i + 1
+    f.close()
+
 def set_test_data():
     with open('data/RandomForest_output.csv', 'rb') as csvfile:
         print csvfile
@@ -475,13 +489,17 @@ def main():
     Test_Benign_list = []
     Test_Malicious_list = []
 
-    set_test_data()
-    print len(Test_Malicious_list)
-    print len(Test_Benign_list)
-    reset_data(reset_extended=reset_extended,with_undersampling=undersample,remove_benign=remove_benign)
-    #pca = PCA(n_components = 3)
-    #X_train = pca.fit_transform(X_train)
-    X_total = np.append(X_train,X_test,axis=0)
+    #set_test_data()
+    # print len(Test_Malicious_list)
+    # print len(Test_Benign_list)
+    # reset_data(reset_extended=reset_extended,with_undersampling=undersample,remove_benign=remove_benign)
+    # #pca = PCA(n_components = 3)
+    # #X_train = pca.fit_transform(X_train)
+    # #X_total = np.append(X_train,X_test,axis=0)
+
+    objdumphandler = ObjDumpHandler("data/malicious_objdump_40000")
+    sha256, X_total  = objdumphandler.parse_file()
+
     clustering = {#"Kmeans": KMeans(n_clusters=2, random_state=0, max_iter=3000),any??
                   "DBSScan": DBSCAN()#, 4
                   #"AffinityPropagation": AffinityPropagation() 1900
@@ -502,12 +520,12 @@ def main():
             ax.set_zlabel("3rd eigenvector")
             ax.w_zaxis.set_ticklabels([])
             plt.show()
-            print "writing Train"
-            write_clusters_to_file(name+'_Train.csv', Clusters_Train)
-            print "Train Done"
+            write_clusters_to_file(name+'_Objdump_Train.csv', Clusters_Train, sha256)
+    #         print "writing Train"
+    #         write_clusters_to_file(name+'_Train.csv', Clusters_Train)
+    #         print "Train Done"
 
-    objdumphandler = ObjDumpHandler("data/malicious_objdump_40000")
-    objdumphandler.parse_file()
+
 
 
 if __name__ == "__main__":
