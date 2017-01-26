@@ -448,15 +448,14 @@ def write_clusters_to_file(filename, clusters):
 def write_clusters_to_file(filename, clusters, sha256):
     f = open(filename, 'w')
     f.write('sha256,cluster\n')
-    i = 0
     #print filename
-    for row in sha256:
-        f.write('%s' % row)
+    for i in range(0, np.shape(sha256)[0]):
+        f.write('%s' % sha256[i])
         f.write(',')
         f.write('%s' % clusters[i])
         f.write('\n')
-        i = i + 1
     f.close()
+
 
 def set_test_data():
     with open('data/RandomForest_output.csv', 'rb') as csvfile:

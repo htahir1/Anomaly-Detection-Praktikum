@@ -2,7 +2,7 @@ import json
 import numpy as np
 
 class ObjDumpHandler(object):
-    def __init__(self, path, reset=True):
+    def __init__(self, path, reset=False):
         self.path = path
         self.inverted_index = {}
         self.reset = reset
@@ -18,10 +18,12 @@ class ObjDumpHandler(object):
 
 
     def parse_file(self):
-        sha256_dict = {}
+        sha256_dict = []
         opcode_master = []
-        self.get_old_sha256()
+
         if self.reset:
+            self.get_old_sha256()
+            i = 0
             with open(self.path, 'r') as f:
                 for row in f:
                     json_obj = json.loads(row)
@@ -42,7 +44,10 @@ class ObjDumpHandler(object):
                                     self.inverted_index[sha256][opcode] = 1
                                 else:
                                     self.inverted_index[sha256][opcode] += 1
-                            sha256_dict[sha256] = 1
+
+                            if sha256 not in sha256_dict:
+                                sha256_dict[i] = sha256
+                                i += 1
                             print sha256
                         else:
                             print "Was not in old dict: " + sha256
@@ -60,11 +65,15 @@ class ObjDumpHandler(object):
                 list_of_lists.append(titles)
 
             data = np.array(list_of_lists)
+            sha256_dict = np.array(sha256_dict)
 
             np.save('data/malicious_inverted_index_opcode.npy', data)
             np.savetxt("data/malicious_inverted_index_opcode.csv", np.asarray(data), delimiter=",",fmt='%.2f')
+            np.save('data/sha256_objdump.npy', sha256_dict)
+            np.savetxt("data/sha256_objdump.csv", np.asarray(sha256_dict), delimiter=",")
         else:
             data = np.load("data/malicious_inverted_index_opcode.npy")
+            sha256_dict = np.load("data/sha256_objdump.npy")
 
         return sha256_dict, data
 
