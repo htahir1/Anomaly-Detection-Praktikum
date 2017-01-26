@@ -17,7 +17,7 @@ from sklearn.cluster import KMeans
 from sklearn.cluster import AffinityPropagation
 from sklearn.decomposition import PCA
 from mpl_toolkits.mplot3d import Axes3D
-
+import csv
 X_train = []
 y_train = []
 X_test = []
@@ -267,6 +267,10 @@ def write_extended_features():
     np.savetxt("data/training_extended.csv", np.asarray(X_train), delimiter=",",fmt='%.2f')
     np.savetxt("data/testing_extended.csv", np.asarray(X_test), delimiter=",",fmt='%.2f')
 
+def remove_test_benign():
+    Tmp = np.delete(X_test, Test_Benign_list, axis=0)
+    return Tmp
+
 
 def reset_data(with_undersampling=True, reset_extended=True,remove_benign = False):
     global X_train
@@ -282,6 +286,9 @@ def reset_data(with_undersampling=True, reset_extended=True,remove_benign = Fals
         X_train = undersample(X_train)
     if remove_benign:
         X_train = X_train[X_train[:,(X_train.shape[1] - 1)] == 1]
+        print X_test.shape
+        X_test = remove_test_benign()
+        print X_test.shape
     process_train_test()
 
 
@@ -400,14 +407,15 @@ def generic_numeric(clf_name,clf,instance,min,max,element):
         classifier["_".join((clf_name,element,str(i)))] = tmp
     return classifier
 
-def cluster_data(mode_is_training,clf, name, feature_importance ):
+def cluster_data(mode_is_training,clf):
     clf.warm_start = True
     if mode_is_training:
-        clf.fit(X_train)
+        clf.fit(X_total)
         return clf.labels_
 
     else:
-        clf.fit(X_test)
+        clf.fit(X_total)
+        print "Returning Test Clusters"
         return clf.labels_
 
 
@@ -415,18 +423,37 @@ def write_clusters_to_file(filename, clusters):
     f = open(filename, 'w')
     f.write('sha256,cluster\n')
     i = 0
-    filename = get_filename(False)
+    filename = get_filename(True)
+    #print filename
     with open(filename) as data_file:
         for row in data_file:
             j = json.loads(row)
-            f.write('%s' % j["sha256"])
-            f.write(',')
-            f.write('%s' % clusters[i])
-            f.write('\n')
-
-            i = i + 1
-
+            if j["label"]=="malicious":
+                f.write('%s' % j["sha256"])
+                f.write(',')
+                f.write('%s' % clusters[i])
+                f.write('\n')
+                i = i + 1
+        for testrow in Test_Malicious_list:
+                f.write('%s' % testrow)
+                f.write(',')
+                f.write('%s' % clusters[i])
+                f.write('\n')
+                i = i + 1
+    print i
     f.close()
+
+def set_test_data():
+    with open('data/RandomForest_output.csv', 'rb') as csvfile:
+        print csvfile
+        spamreader = csv.reader(csvfile, delimiter=',', quotechar='|')
+        iterator = 0
+        for row in spamreader:
+            if row[1] == 'benign':
+                Test_Benign_list.append(iterator)
+            if row[1] == 'malicious':
+                Test_Malicious_list.append(row[0])
+            iterator = iterator + 1
 '''
     Main function. Start reading the code here
 '''
@@ -437,65 +464,46 @@ def main():
     global X_test
     global y_train
     global y_test
+    global Test_Benign_list
+    global Test_Malicious_list
+    global X_total
 
     reset_extended = False
-    optimize_params = False
     undersample = False
-    clustering = True
     remove_benign = True
+    Test_Benign_list = []
+    Test_Malicious_list = []
 
+    set_test_data()
+    print len(Test_Malicious_list)
+    print len(Test_Benign_list)
     reset_data(reset_extended=reset_extended,with_undersampling=undersample,remove_benign=remove_benign)
     #pca = PCA(n_components = 3)
     #X_train = pca.fit_transform(X_train)
-    print X_train.shape
-
-    clustering = {#"Kmeans": KMeans(n_clusters=2, random_state=0, max_iter=3000),
-                  "DBSScan": DBSCAN()#,
-                  #"AffinityPropagation": AffinityPropagation()
-     }
+    X_total = np.append(X_train,X_test,axis=0)
+    clustering = {#"Kmeans": KMeans(n_clusters=2, random_state=0, max_iter=3000),any??
+                  "DBSScan": DBSCAN()#, 4
+                  #"AffinityPropagation": AffinityPropagation() 1900
+        }
     for name, cluster in clustering.items():
-            Clusters_Train =  cluster_data(True, cluster, name, feature_importance = False)
+            Clusters_Train =  cluster_data(True, cluster)
             print Clusters_Train.shape
             pca = PCA(n_components = 3)
-            X_train = pca.fit_transform(X_train)
+            X_total = pca.fit_transform(X_total)
             fig = plt.figure(1, figsize=(8, 6))
             ax = Axes3D(fig, elev=-150, azim=110)
-            ax.scatter(X_train[:, 0], X_train[:, 1], X_train[:, 2], s=30,c= Clusters_Train)
-            ax.set_title("First three PCA directions - TRAIN")
+            ax.scatter(X_total[:, 0], X_total[:, 1], X_total[:, 2], s=30,c= Clusters_Train)
+            ax.set_title("First three PCA directions - TOTAL")
             ax.set_xlabel("1st eigenvector")
             ax.w_xaxis.set_ticklabels([])
             ax.set_ylabel("2nd eigenvector")
             ax.w_yaxis.set_ticklabels([])
             ax.set_zlabel("3rd eigenvector")
             ax.w_zaxis.set_ticklabels([])
-            #plt.scatter(X_train[:, 0], X_train[:, 1],s=30, c= Clusters_Train)
-            #plt.xlabel('1st Eigen Value')
-            #plt.ylabel('2nd Eigen Value')
-            #plt.zlabel('3rd Eigen Value')
             plt.show()
-            #write_clusters_to_file('DBSCAN_Train.csv', Clusters_Train)
-
-            Clusters_Test =  cluster_data(False, cluster, name, feature_importance = False)
-            print Clusters_Test.shape
-            pca = PCA(n_components = 3)
-            X_test = pca.fit_transform(X_test)
-            fig = plt.figure(1, figsize=(8, 6))
-            ax = Axes3D(fig, elev=-150, azim=110)
-            ax.scatter(X_test[:, 0], X_test[:, 1], X_test[:, 2], s=30,c= Clusters_Test)
-            ax.set_title("First three PCA directions- TEST")
-            ax.set_xlabel("1st eigenvector")
-            ax.w_xaxis.set_ticklabels([])
-            ax.set_ylabel("2nd eigenvector")
-            ax.w_yaxis.set_ticklabels([])
-            ax.set_zlabel("3rd eigenvector")
-            ax.w_zaxis.set_ticklabels([])
-            #plt.scatter(X_train[:, 0], X_train[:, 1],s=30, c= Clusters_Train)
-            #plt.xlabel('1st Eigen Value')
-            #plt.ylabel('2nd Eigen Value')
-            #plt.zlabel('3rd Eigen Value')
-            plt.show()
-            write_clusters_to_file('DBSCAN_Test.csv', Clusters_Test)
-
+            print "writing Train"
+            write_clusters_to_file(name+'_Train.csv', Clusters_Train)
+            print "Train Done"
 
     # Use this loop for testing on test data
 
