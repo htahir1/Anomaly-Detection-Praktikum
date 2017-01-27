@@ -2,7 +2,7 @@ import json
 import numpy as np
 
 class ObjDumpHandler(object):
-    def __init__(self, path, reset=True):
+    def __init__(self, path, reset=False):
         self.path = path
         self.inverted_index = {}
         self.reset = reset
@@ -68,7 +68,7 @@ class ObjDumpHandler(object):
             np.save('data/malicious_inverted_index_opcode.npy', data)
             np.savetxt("data/malicious_inverted_index_opcode.csv", np.asarray(data), delimiter=",",fmt='%.2f')
             np.save('data/sha256_objdump.npy', sha256_dict)
-            np.savetxt("data/sha256_objdump.csv", np.asarray(sha256_dict), delimiter=",")
+            #np.savetxt("data/sha256_objdump.csv", np.asarray(sha256_dict), delimiter=",")
         else:
             data = np.load("data/malicious_inverted_index_opcode.npy")
             sha256_dict = np.load("data/sha256_objdump.npy")

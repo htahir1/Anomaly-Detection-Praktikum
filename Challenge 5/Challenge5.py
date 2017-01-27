@@ -16,6 +16,11 @@ from sklearn.cluster import AffinityPropagation
 from sklearn.decomposition import PCA
 from mpl_toolkits.mplot3d import Axes3D
 import csv
+from matplotlib import pyplot as plt
+from scipy.cluster.hierarchy import dendrogram, linkage
+from scipy.cluster.hierarchy import cophenet
+from scipy.spatial.distance import pdist
+from scipy.cluster.hierarchy import fcluster
 
 X_train = []
 y_train = []
@@ -37,33 +42,6 @@ feature_names.append("rich_header")        # 8
 '''
     Helper functions
 '''
-def undersample(data, how_many_extra_normal=0):
-    new_data = []
-    check_dict = {}
-
-    #np.random.shuffle(data)
-
-    for i in range(0, np.shape(data)[0]):
-        if data[i][np.shape(data)[1] - 1] == 1:
-            new_data.append(data[i].tolist())
-
-    size_of_anomalies = len(new_data)
-
-    break_while = True
-    while(break_while):
-        random_row_index = random.randint(0, np.shape(data)[0]-1)
-        if random_row_index not in check_dict:
-            if data[random_row_index][np.shape(data)[1] - 1] == 0:
-                new_data.append(data[random_row_index])
-                check_dict[random_row_index] = 1
-
-                if (len(check_dict) == size_of_anomalies + how_many_extra_normal) or (len(check_dict) + size_of_anomalies == len(data)):
-                    break_while = False
-
-    new_data = np.array(new_data)
-    np.random.shuffle(new_data)
-    return np.array(new_data)
-
 
 def get_filename(training):
     if training:
@@ -93,140 +71,7 @@ def normalize_data(x,mode):
         return ((x - np.amin(x, axis = 0)) / x.ptp(0))
 
 
-def check_json(json_obj, key):
-    if key in json_obj and json_obj[key] != None:
-        return True
-    return False
 
-
-def get_import_dlls(data):
-    global DLLs
-    for json_obj in data:
-        if check_json(json_obj, "results"):
-            json_obj = json_obj["results"]["peinfo"]
-        else:
-            json_obj = json_obj["peinfo"]
-        if check_json(json_obj, "imports"):
-            for import_dll in json_obj["imports"]:
-               if import_dll["dll"].lower() not in DLLs:
-                   DLLs.append(import_dll["dll"].lower())
-
-    return DLLs
-
-
-def process_data(data):
-    processed_data = []
-    global DLLs
-    global feature_names
-
-
-
-    for json_obj in data:
-        processed_data_inner = []
-
-        json_obj_orig = json_obj
-
-        # processed_data_inner.append(len(json_obj))  # Feature 0
-
-        if check_json(json_obj, "results"):
-            json_obj = json_obj["results"]["peinfo"]
-        else:
-            json_obj = json_obj["peinfo"]
-
-        #### Number of Exports ####
-        if check_json(json_obj, "exports"):  # Feature 1
-            processed_data_inner.append(len(json_obj["exports"]))
-        else:
-            processed_data_inner.append(0)
-
-        #### Number of Imports ####
-        if check_json(json_obj, "imports"):  # Feature 2
-            processed_data_inner.append(len(json_obj["imports"]))
-        else:
-            processed_data_inner.append(0)
-
-        #### All Training Data DLLs ####
-        # if check_json(json_obj, "imports"):
-        #     count = [0]* len(DLLs)
-        #     for imports in json_obj["imports"]:
-        #         if imports["dll"].lower() in DLLs:
-        #            count[DLLs.index(imports["dll"].lower())] += 1
-        #     for i in count:
-        #         processed_data_inner.append(i)
-        # else:
-        #     for i in range(0,len(DLLs)):
-        #         processed_data_inner.append(0)
-
-        #### PESECTIONS ####
-        if check_json(json_obj, "pe_sections"):
-            size_array = []
-            virt_size_array = []
-            entropy_array = []
-
-            for pe_section in json_obj["pe_sections"]:
-                size_array.append(pe_section["size"])  # Feature 4
-                virt_size_array.append(pe_section["virt_size"])  # Feature 5
-                entropy_array.append(pe_section["entropy"])  # Feature 6
-
-            if len(size_array) != 0:
-                processed_data_inner.append(max(size_array))
-            else:
-                processed_data_inner.append(0)
-
-            if len(virt_size_array) != 0:
-                processed_data_inner.append(max(virt_size_array))
-            else:
-                processed_data_inner.append(-1)
-
-            if len(entropy_array) != 0:
-                processed_data_inner.append(max(entropy_array))
-            else:
-                processed_data_inner.append(-1)
-        else:
-            processed_data_inner.append(-1)
-            processed_data_inner.append(-1)
-            processed_data_inner.append(-1)
-
-        # ### Pehash ####
-        # if check_json(json_obj, "pehash"):  # Feature 7
-        #     processed_data_inner.append(1)
-        # else:
-        #     processed_data_inner.append(0)
-
-        #### Debug ####
-        if check_json(json_obj, "debug"):  # Feature 8
-            processed_data_inner.append(1)
-        else:
-            processed_data_inner.append(0)
-
-        #### Rich Header ####
-        times_used_array = []
-        if check_json(json_obj, "rich_header"):
-            if check_json(json_obj["rich_header"], "values_parsed"):
-                for times_used in json_obj["rich_header"]["values_parsed"]:
-                    times_used_array.append(times_used["times_used"])
-
-                if len(times_used_array) != 0:
-                    processed_data_inner.append(max(times_used_array))  # Feature 9
-                else:
-                    processed_data_inner.append(-1)
-            else:
-                processed_data_inner.append(-1)
-        else:
-            processed_data_inner.append(-1)
-
-
-        #### Label ####
-        if check_json(json_obj_orig, "label"):
-            processed_data_inner.append(1 if json_obj_orig["label"] == "malicious" else 0)
-
-        processed_data.append(np.array(processed_data_inner))
-
-    processed_data = np.array(processed_data)
-    print len(DLLs)
-    print DLLs
-    print np.shape(processed_data)
-    return processed_data
 
 
 def process_train_test():
@@ -283,11 +128,9 @@ def reset_data(with_undersampling=True, reset_extended=True,remove_benign = Fals
     else:
         X_train = np.load("data/training_extended_binary.npy")
         X_test = np.load("data/testing_extended_binary.npy")
-    if with_undersampling:
-        X_train = undersample(X_train)
+
     if remove_benign:
         X_train = X_train[X_train[:,(X_train.shape[1] - 1)] == 1]
-        print X_test.shape
         X_test = remove_test_benign()
         print X_test.shape
     process_train_test()
@@ -456,6 +299,30 @@ def write_clusters_to_file(filename, clusters, sha256):
         f.write('\n')
     f.close()
 
+def fancy_dendrogram(*args, **kwargs):
+    max_d = kwargs.pop('max_d', None)
+    if max_d and 'color_threshold' not in kwargs:
+        kwargs['color_threshold'] = max_d
+    annotate_above = kwargs.pop('annotate_above', 0)
+
+    ddata = dendrogram(*args, **kwargs)
+
+    if not kwargs.get('no_plot', False):
+        plt.title('Hierarchical Clustering Dendrogram (truncated)')
+        plt.xlabel('sample index or (cluster size)')
+        plt.ylabel('distance')
+        for i, d, c in zip(ddata['icoord'], ddata['dcoord'], ddata['color_list']):
+            x = 0.5 * sum(i[1:3])
+            y = d[1]
+            if y > annotate_above:
+                plt.plot(x, y, 'o', c=c)
+                plt.annotate("%.3g" % y, (x, y), xytext=(0, -5),
+                             textcoords='offset points',
+                             va='top', ha='center')
+        if max_d:
+            plt.axhline(y=max_d, c='k')
+    return ddata
+
 
 def set_test_data():
     with open('data/RandomForest_output.csv', 'rb') as csvfile:
@@ -488,43 +355,62 @@ def main():
     Test_Benign_list = []
     Test_Malicious_list = []
 
-    #set_test_data()
+    set_test_data()
     # print len(Test_Malicious_list)
     # print len(Test_Benign_list)
-    # reset_data(reset_extended=reset_extended,with_undersampling=undersample,remove_benign=remove_benign)
-    # #pca = PCA(n_components = 3)
-    # #X_train = pca.fit_transform(X_train)
-    # #X_total = np.append(X_train,X_test,axis=0)
+    reset_data(reset_extended=reset_extended,with_undersampling=undersample,remove_benign=remove_benign)
+    X_total = np.append(X_train,X_test,axis=0)
+    print X_total.shape
 
-    objdumphandler = ObjDumpHandler("data/malicious_objdump_40000")
-    sha256, X_total  = objdumphandler.parse_file()
+    #objdumphandler = ObjDumpHandler("data/malicious_objdump_40000")
+    #sha256, X_total  = objdumphandler.parse_file()
 
-    clustering = {#"Kmeans": KMeans(n_clusters=2, random_state=0, max_iter=3000),any??
-                  "DBSScan": DBSCAN()#, 4
-                  #"AffinityPropagation": AffinityPropagation() 1900
-        }
-    for name, cluster in clustering.items():
-            Clusters_Train =  cluster_data(True, cluster)
-            print Clusters_Train.shape
-            pca = PCA(n_components = 3)
-            X_total = pca.fit_transform(X_total)
-            fig = plt.figure(1, figsize=(8, 6))
-            ax = Axes3D(fig, elev=-150, azim=110)
-            ax.scatter(X_total[:, 0], X_total[:, 1], X_total[:, 2], s=30,c= Clusters_Train)
-            ax.set_title("First three PCA directions - TOTAL")
-            ax.set_xlabel("1st eigenvector")
-            ax.w_xaxis.set_ticklabels([])
-            ax.set_ylabel("2nd eigenvector")
-            ax.w_yaxis.set_ticklabels([])
-            ax.set_zlabel("3rd eigenvector")
-            ax.w_zaxis.set_ticklabels([])
-            plt.show()
-            write_clusters_to_file(name+'_Objdump_Train.csv', Clusters_Train, sha256)
+    # clustering = {#"Kmeans": KMeans(n_clusters=2, random_state=0, max_iter=3000),any??
+    #               "DBSScan": DBSCAN()#, 4
+    #               #"AffinityPropagation": AffinityPropagation() 1900
+    #     }
+    # for name, cluster in clustering.items():
+    #         Clusters_Train =  cluster_data(True, cluster)
+    #         print Clusters_Train.shape
+    #         pca = PCA(n_components = 3)
+    #         X_total = pca.fit_transform(X_total)
+    #         fig = plt.figure(1, figsize=(8, 6))
+    #         ax = Axes3D(fig, elev=-150, azim=110)
+    #         ax.scatter(X_total[:, 0], X_total[:, 1], X_total[:, 2], s=30,c= Clusters_Train)
+    #         ax.set_title("First three PCA directions - TOTAL")
+    #         ax.set_xlabel("1st eigenvector")
+    #         ax.w_xaxis.set_ticklabels([])
+    #         ax.set_ylabel("2nd eigenvector")
+    #         ax.w_yaxis.set_ticklabels([])
+    #         ax.set_zlabel("3rd eigenvector")
+    #         ax.w_zaxis.set_ticklabels([])
+    #         plt.show()
+    #         write_clusters_to_file(name+'_Objdump_Train.csv', Clusters_Train, sha256)
     #         print "writing Train"
     #         write_clusters_to_file(name+'_Train.csv', Clusters_Train)
     #         print "Train Done"
 
+    Z = linkage(X_total, 'ward')
+    c, coph_dists = cophenet(Z, pdist(X_total))
+    # calculate full dendrogram
+    plt.figure(figsize=(25, 10))
+    plt.title('Hierarchical Clustering Dendrogram')
+    plt.xlabel('sample index')
+    plt.ylabel('distance')
 
+    fancy_dendrogram(
+    Z,
+    truncate_mode='lastp',
+    p=12,
+    leaf_rotation=90.,
+    leaf_font_size=12.,
+    show_contracted=True,
+    annotate_above=10,  # useful in small plots so annotations don't overlap
+    )
+    plt.show()
+    #max_d = 100000 @ Objdump
+    #clusters = fcluster(Z, max_d, criterion='distance')
+    #clusters
 
 
 if __name__ == "__main__":
