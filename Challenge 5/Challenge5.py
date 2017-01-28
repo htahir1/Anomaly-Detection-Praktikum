@@ -355,15 +355,18 @@ def main():
     Test_Benign_list = []
     Test_Malicious_list = []
 
-    set_test_data()
+    # set_test_data()
     # print len(Test_Malicious_list)
     # print len(Test_Benign_list)
-    reset_data(reset_extended=reset_extended,with_undersampling=undersample,remove_benign=remove_benign)
-    X_total = np.append(X_train,X_test,axis=0)
+    # reset_data(reset_extended=reset_extended,with_undersampling=undersample,remove_benign=remove_benign)
+    # X_total = np.append(X_train,X_test,axis=0)
+
+    objdumphandler = ObjDumpHandler("data/malicious_objdump_40000")
+    sha256, X_total  = objdumphandler.parse_file()
+
     print X_total.shape
 
-    #objdumphandler = ObjDumpHandler("data/malicious_objdump_40000")
-    #sha256, X_total  = objdumphandler.parse_file()
+
 
     # clustering = {#"Kmeans": KMeans(n_clusters=2, random_state=0, max_iter=3000),any??
     #               "DBSScan": DBSCAN()#, 4
@@ -391,7 +394,6 @@ def main():
     #         print "Train Done"
 
     Z = linkage(X_total, 'ward')
-    c, coph_dists = cophenet(Z, pdist(X_total))
     # calculate full dendrogram
     plt.figure(figsize=(25, 10))
     plt.title('Hierarchical Clustering Dendrogram')

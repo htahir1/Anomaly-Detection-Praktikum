@@ -9,7 +9,7 @@ class ObjDumpHandler(object):
         self.old_sha256_dict = {}
 
     def get_old_sha256(self):
-        matched_sha256_file = open('DBSScan_Train.csv', 'r')
+        matched_sha256_file = open('DBSScan_Total.csv', 'r')
         for row in matched_sha256_file:
             s = row[:-3]
             print s
