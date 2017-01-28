@@ -1,0 +1,54 @@
+$(function () {
+    Highcharts.chart('container', {
+
+        chart: {
+            type: 'bubble',
+            plotBorderWidth: 2,
+            zoomType: 'xy'
+        },
+
+        title: {
+            text: 'Impact Quadrant'
+        },
+        subtitle: {
+            text: 'Severity Vs Exposure'
+        },
+
+        xAxis: {
+        		title: {
+                text: 'Severity'
+            },
+            gridLineWidth: 1,
+            min: 0,
+            max: 100,
+            
+        },
+
+        yAxis: {
+        		title: {
+                text: 'Exposure'
+            },
+            min: 0,
+            max: 100,
+        },
+
+        series: [{
+        		name: 'ABC Malware',
+            data: [
+                [50, 40, 77],
+               
+            ],
+       
+            marker: {
+                fillColor: {
+                    radialGradient: { cx: 0.4, cy: 0.3, r: 0.7 },
+                    stops: [
+                        [0, 'rgba(100,250,200,0.9)'],
+                        [1, Highcharts.Color(Highcharts.getOptions().colors[0]).setOpacity(0.5).get('rgba')]
+                    ]
+                }
+            }
+        }]
+
+    });
+});

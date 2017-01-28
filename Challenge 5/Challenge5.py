@@ -288,7 +288,7 @@ def write_clusters_to_file(filename, clusters):
     f.close()
 
 
-def write_clusters_to_file(filename, clusters, sha256):
+def write_clusters_to_file_1(filename, clusters, sha256):
     f = open(filename, 'w')
     f.write('sha256,cluster\n')
     #print filename
@@ -326,7 +326,7 @@ def fancy_dendrogram(*args, **kwargs):
 
 def set_test_data():
     with open('data/RandomForest_output.csv', 'rb') as csvfile:
-        print csvfile
+        #print csvfile
         spamreader = csv.reader(csvfile, delimiter=',', quotechar='|')
         iterator = 0
         for row in spamreader:
@@ -335,43 +335,68 @@ def set_test_data():
             if row[1] == 'malicious':
                 Test_Malicious_list.append(row[0])
             iterator = iterator + 1
+
+def combine_files(file1, file2):
+    with open(file1, 'rb') as csvfile:
+        orig_sha256 = {}
+        print csvfile
+        read_orig = csv.reader(csvfile, delimiter=',', quotechar='|')
+        for row in read_orig:
+            orig_sha256.keys().append(row[0])
+            orig_sha256[row[0]] = list(row[1])
+    with open(file2, 'rb') as csvfile2:
+        read_secondary = csv.reader(csvfile2, delimiter=',', quotechar='|')
+        for row in read_secondary:
+            if orig_sha256.has_key(row[0]):
+                orig_sha256[row[0]].append(row[1])
+
+    f = open('MASTER.csv', 'w')
+    f.write('sha256,PEInfocluster,Objdumpcluster\n')
+    #print filename
+    for key in orig_sha256:
+        f.write('%s' % key)
+        f.write(',')
+        for item in orig_sha256[key]:
+            f.write('%s' % item)
+            f.write(',')
+        f.write('\n')
+    f.close()
+
 '''
     Main function. Start reading the code here
 '''
 def main():
-    global training_data
-    global testing_data
-    global X_train
-    global X_test
-    global y_train
-    global y_test
-    global Test_Benign_list
-    global Test_Malicious_list
-    global X_total
-
-    reset_extended = False
-    undersample = False
-    remove_benign = True
-    Test_Benign_list = []
-    Test_Malicious_list = []
-
+    # global training_data
+    # global testing_data
+    # global X_train
+    # global X_test
+    # global y_train
+    # global y_test
+    # global Test_Benign_list
+    # global Test_Malicious_list
+    # global X_total
+    #
+    # reset_extended = False
+    # undersample = False
+    # remove_benign = True
+    # Test_Benign_list = []
+    # Test_Malicious_list = []
+    #
     # set_test_data()
     # print len(Test_Malicious_list)
     # print len(Test_Benign_list)
     # reset_data(reset_extended=reset_extended,with_undersampling=undersample,remove_benign=remove_benign)
     # X_total = np.append(X_train,X_test,axis=0)
-
-    objdumphandler = ObjDumpHandler("data/malicious_objdump_40000")
-    sha256, X_total  = objdumphandler.parse_file()
-
-    print X_total.shape
-
-
-
+    #
+    #
+    #
+    # print X_total.shape
+    #
     # clustering = {#"Kmeans": KMeans(n_clusters=2, random_state=0, max_iter=3000),any??
     #               "DBSScan": DBSCAN()#, 4
     #               #"AffinityPropagation": AffinityPropagation() 1900
     #     }
+    #
     # for name, cluster in clustering.items():
     #         Clusters_Train =  cluster_data(True, cluster)
     #         print Clusters_Train.shape
@@ -387,34 +412,35 @@ def main():
     #         ax.w_yaxis.set_ticklabels([])
     #         ax.set_zlabel("3rd eigenvector")
     #         ax.w_zaxis.set_ticklabels([])
-    #         plt.show()
-    #         write_clusters_to_file(name+'_Objdump_Train.csv', Clusters_Train, sha256)
+    #         #plt.show()
+    #
     #         print "writing Train"
     #         write_clusters_to_file(name+'_Train.csv', Clusters_Train)
     #         print "Train Done"
-
-    Z = linkage(X_total, 'ward')
-    # calculate full dendrogram
-    plt.figure(figsize=(25, 10))
-    plt.title('Hierarchical Clustering Dendrogram')
-    plt.xlabel('sample index')
-    plt.ylabel('distance')
-
-    fancy_dendrogram(
-    Z,
-    truncate_mode='lastp',
-    p=12,
-    leaf_rotation=90.,
-    leaf_font_size=12.,
-    show_contracted=True,
-    annotate_above=10,  # useful in small plots so annotations don't overlap
-    )
-    plt.show()
-    #max_d = 100000 @ Objdump
-    #clusters = fcluster(Z, max_d, criterion='distance')
-    #clusters
-
-
+    #
+    # objdumphandler = ObjDumpHandler("data/malicious_objdump_40000")
+    # sha256, X_total  = objdumphandler.parse_file()
+    # Z = linkage(X_total, 'ward')
+    # # calculate full dendrogram
+    # plt.figure(figsize=(25, 10))
+    # plt.title('Hierarchical Clustering Dendrogram')
+    # plt.xlabel('sample index')
+    # plt.ylabel('distance')
+    #
+    # fancy_dendrogram(
+    # Z,
+    # truncate_mode='lastp',
+    # p=12,
+    # leaf_rotation=90.,
+    # leaf_font_size=12.,
+    # show_contracted=True,
+    # annotate_above=10,  # useful in small plots so annotations don't overlap
+    # )
+    # plt.show()
+    # max_d = 100000 #@ Objdump
+    # clusters = fcluster(Z, max_d, criterion='distance')
+    # write_clusters_to_file_1(name+'_Objdump_Total.csv', clusters, sha256)
+    combine_files('DBSScan_Total.csv','DBSScan_Objdump_Total.csv')
 if __name__ == "__main__":
     main()
 
