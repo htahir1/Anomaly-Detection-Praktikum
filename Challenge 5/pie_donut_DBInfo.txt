@@ -1,0 +1,114 @@
+$(function () {
+
+    var colors = Highcharts.getOptions().colors,
+        categories = ['Cohort 1', 'Cohort 2', 'Cohort 3'],
+        data = [{
+            y: 61.2,
+            color: colors[0],
+            drilldown: {
+                name: 'Cohort 1',
+                categories: ['Adware','Botnet', 'Unwanted Programs'],
+                data: [36, 18.1, 9],
+                color: colors[0]
+            }
+        }, {
+            y: 35.2,
+            color: colors[4],
+            drilldown: {
+                name: 'Cohort 2',
+                categories: ['Generic', 'Botnet', 'Loggers'],
+                data: [15.33, 5.15, 10.22],
+                color: colors[1]
+            }
+        }, {
+            y: 3.1,
+            color: colors[3],
+            drilldown: {
+                name: 'Cohort 3',
+                categories: ['Hijacking', 'Ransomware','Botnets'
+                    ],
+                data: [3.14, 5.24, 0.55],
+                color: colors[2]
+            }
+        }],
+        browserData = [],
+        versionsData = [],
+        i,
+        j,
+        dataLen = data.length,
+        drillDataLen,
+        brightness;
+
+
+    // Build the data arrays
+    for (i = 0; i < dataLen; i += 1) {
+
+        // add browser data
+        browserData.push({
+            name: categories[i],
+            y: data[i].y,
+            color: data[i].color
+        });
+
+        // add version data
+        drillDataLen = data[i].drilldown.data.length;
+        for (j = 0; j < drillDataLen; j += 1) {
+            brightness = 0.2 - (j / drillDataLen) / 5;
+            versionsData.push({
+                name: data[i].drilldown.categories[j],
+                y: data[i].drilldown.data[j],
+                color: Highcharts.Color(data[i].color).brighten(brightness).get()
+            });
+        }
+    }
+
+    // Create the chart
+    Highcharts.chart('container', {
+        chart: {
+            type: 'pie'
+        },
+        title: {
+            text: 'Cohort Corroboration'
+        },
+        subtitle: {
+            text: 'PEInfo & DBInfo (rough analysis)'
+        },
+        yAxis: {
+            title: {
+                text: 'Total percent market share'
+            }
+        },
+        plotOptions: {
+            pie: {
+                shadow: false,
+                center: ['50%', '50%']
+            }
+        },
+        tooltip: {
+            valueSuffix: '%'
+        },
+        series: [{
+            name: 'Browsers',
+            data: browserData,
+            size: '60%',
+            dataLabels: {
+                formatter: function () {
+                    return this.y > 5 ? this.point.name : null;
+                },
+                color: '#ffffff',
+                distance: -30
+            }
+        }, {
+            name: 'Versions',
+            data: versionsData,
+            size: '80%',
+            innerSize: '60%',
+            dataLabels: {
+                formatter: function () {
+                    // display only if larger than 1
+                    return this.y > 1 ? '<b>' + this.point.name + ':</b> ' + this.y + '%' : null;
+                }
+            }
+        }]
+    });
+});

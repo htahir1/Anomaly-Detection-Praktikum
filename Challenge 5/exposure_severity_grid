@@ -1,0 +1,83 @@
+$(function () {
+    Highcharts.chart('container', {
+
+        chart: {
+            type: 'bubble',
+            plotBorderWidth: 2,
+            zoomType: 'xy'
+        },
+
+        title: {
+            text: 'Impact Quadrant'
+        },
+        subtitle: {
+            text: 'Exposure Vs Severity'
+        },
+
+        xAxis: {
+                title: {
+                text: 'Exposure'
+            },
+            gridLineWidth: 1,
+            min: 0,
+            max: 100,
+            
+        },
+
+        yAxis: {
+                title: {
+                text: 'Severity'
+            },
+            min: 0,
+            max: 100,
+        },
+
+        series: [{
+                name: 'Cohort 1',
+            data: [
+                [61.2, 10, 150],
+            ],
+       
+            marker: {
+                fillColor: {
+                    radialGradient: { cx: 0.4, cy: 0.3, r: 0.7 },
+                    stops: [
+                        [0, 'rgba(100,255,200,0.9)'],
+                       
+                    ]
+                }
+            }
+        },{
+                name: 'Cohort 2',
+            data: [
+                [40, 35.4, 1500],  
+            ],
+       
+            marker: {
+                fillColor: {
+                    radialGradient: { cx: 0.4, cy: 0.3, r: 0.7 },
+                    stops: [
+                        [0, 'rgba(240,140,50,0.9)']]
+                        
+                }
+            }
+        },
+        {
+                name: 'Cohort 3',
+            data: [
+                [3, 90, 17500],  
+            ],
+       
+            marker: {
+                fillColor: {
+                    radialGradient: { cx: 0.4, cy: 0.3, r: 0.7 },
+                    stops: [
+                        [0, 'rgba(255,0,0,0.9)'],
+                      
+                    ]
+                }
+            }
+        }]
+
+    });
+});
