@@ -8,7 +8,7 @@ $(function () {
         },
 
         title: {
-            text: 'Impact Quadrant'
+            text: ''
         },
         subtitle: {
             text: 'Exposure Vs Severity'
@@ -50,7 +50,7 @@ $(function () {
         },{
                 name: 'Cohort 2',
             data: [
-                [40, 35.4, 1500],  
+                [33, 57, 1500],  
             ],
        
             marker: {
